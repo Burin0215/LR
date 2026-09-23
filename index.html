@@ -88,6 +88,15 @@
 
                 <!-- Global Action Buttons -->
                 <div class="flex items-center space-x-2">
+                    <!-- Admin Notification Bell Badge Button -->
+                    <button v-if="isAdmin" @click="openModal('adminNotificationModal')"
+                            class="relative bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 p-2.5 rounded-xl transition duration-200 flex items-center justify-center active:scale-95 shadow-xs" title="แจ้งเตือน Admin">
+                        <i class="fa-solid fa-bell text-rosepink-500 text-base"></i>
+                        <span v-if="unreadAdminNotificationsCount > 0" class="absolute -top-1.5 -right-1.5 bg-rosepink-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                            {{ unreadAdminNotificationsCount }}
+                        </span>
+                    </button>
+
                     <!-- Anonymous Gift Rose Button -->
                     <button v-if="currentIdentity && !isAdmin" @click="openModal('giftModal')"
                             class="bg-gradient-to-r from-rosepink-400 to-rosepink-500 hover:from-rosepink-500 hover:to-rosepink-600 text-white font-bold px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2 active:scale-95 shadow-md border border-rosepink-300">
@@ -124,7 +133,7 @@
             </div>
 
             <!-- Tab Navigation -->
-            <div v-if="currentIdentity" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-cream-200/60 overflow-x-auto no-scrollbar">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-cream-200/60 overflow-x-auto no-scrollbar">
                 <nav class="flex space-x-6 sm:space-x-8">
                     <button v-for="tab in displayTabs" :key="tab.id"
                             @click="switchTab(tab.id)"
@@ -312,9 +321,16 @@
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_logs'" class="space-y-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
-                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">ประวัติ Logs ทั้งหมดในระบบ 📝</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">ตรวจสอบบันทึกความเคลื่อนไหวการเพิ่ม-ลดของในคลัง และการมอบดอกกุหลาบของทุกคน</p>
+                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">ประวัติ Logs {{ adminLogsFilter === 'all' ? 'ทั้งหมดในระบบ' : 'ของ Visitor: ' + getIdentityName(adminLogsFilter) }} 📝</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">ตรวจสอบบันทึกความเคลื่อนไหว (แสดงชื่อผู้มอบดอกกุหลาบสำหรับ Admin)</p>
                     </div>
+                    <select v-model="adminLogsFilter"
+                            class="px-3.5 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-rosepink-400">
+                        <option value="all">👥 ทุกคน</option>
+                        <option v-for="visitor in visitorIdentities" :key="visitor.id" :value="visitor.id">
+                            {{ visitor.avatar }} {{ visitor.name }}
+                        </option>
+                    </select>
                 </div>
 
                 <div class="bg-white rounded-3xl border border-cream-200 overflow-hidden soft-card-shadow">
@@ -331,7 +347,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-cream-100">
-                                <tr v-for="log in inventoryLogs" :key="log.id" class="hover:bg-rosepink-50/30 transition">
+                                <tr v-for="log in adminFilteredLogs" :key="log.id" class="hover:bg-rosepink-50/30 transition">
                                     <td class="py-4 px-6 text-gray-600 font-medium whitespace-nowrap">
                                         <i class="fa-regular fa-clock text-rosepink-400 mr-1.5"></i>
                                         {{ formatDate(log.timestamp) }}
@@ -355,10 +371,10 @@
                                         {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
                                     </td>
                                     <td class="py-4 px-6 text-gray-500">
-                                        {{ log.note || '-' }}
+                                        {{ log.adminNote || log.note || '-' }}
                                     </td>
                                 </tr>
-                                <tr v-if="inventoryLogs.length === 0">
+                                <tr v-if="adminFilteredLogs.length === 0">
                                     <td colspan="6" class="py-12 text-center text-gray-400">
                                         ยังไม่มีประวัติการบันทึกข้อมูลในระบบ
                                     </td>
@@ -375,7 +391,7 @@
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                         <div>
                             <span class="text-xs font-bold text-rosepink-600 uppercase tracking-wider bg-rosepink-50 px-2.5 py-1 rounded-full border border-rosepink-200">
-                                🛍️ ภาพรวม Inventory ล่าสุด {{ currentIdentity ? '(' + currentIdentity.name + ')' : '(Visitor ทั่วไป)' }}
+                                🛍️ ภาพรวม Inventory ล่าสุด {{ currentIdentity ? '(' + currentIdentity.name + ')' : '(ยังไม่ได้เลือกตัวตน - แสดงค่าเริ่มต้น)' }}
                             </span>
                             <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title mt-2">
                                 รายการของที่มีอยู่ในครอบครอง
@@ -412,7 +428,7 @@
             <section v-if="!isAdmin && currentTab === 'inventory'" class="space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-1">
                     <h3 class="text-base font-bold text-gray-800 font-serif-title flex items-center gap-2">
-                        <i class="fa-solid fa-bag-shopping text-rosepink-500"></i> รายการของในคลัง Inventory {{ currentIdentity ? '(' + currentIdentity.name + ')' : '(Visitor ทั่วไป)' }}
+                        <i class="fa-solid fa-bag-shopping text-rosepink-500"></i> รายการของในคลัง Inventory {{ currentIdentity ? '(' + currentIdentity.name + ')' : '' }}
                     </h3>
                 </div>
 
@@ -452,8 +468,8 @@
             <section v-if="!isAdmin && currentTab === 'logs'" class="space-y-6">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
-                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">บันทึกประวัติความเคลื่อนไหว 📝</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">ติดตามย้อนหลังว่ามีการเพิ่ม-ลดหรือปรับจำนวนรายการของใน Inventory วันไหนบ้าง</p>
+                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">บันทึกประวัติความเคลื่อนไหวของคุณ 📝</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">ติดตามย้อนหลังเฉพาะประวัติใน Inventory ของคุณเอง (ไม่เปิดเผยชื่อผู้ส่งดอกกุหลาบ)</p>
                     </div>
                 </div>
 
@@ -496,7 +512,7 @@
                                 </tr>
                                 <tr v-if="myLogs.length === 0">
                                     <td colspan="5" class="py-12 text-center text-gray-400">
-                                        ยังไม่มีประวัติการปรับนับรายการใน Inventory
+                                        ยังไม่มีประวัติการปรับนับรายการใน Inventory ของคุณ
                                     </td>
                                 </tr>
                             </tbody>
@@ -610,28 +626,34 @@
 
                 <!-- Admin Roulette Customizer Section -->
                 <div v-if="isAdmin" class="w-full mt-4 pt-4 border-t border-cream-200 space-y-3">
-                    <h4 class="text-xs font-bold text-rosepink-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <i class="fa-solid fa-gear"></i> จัดการรายการวงล้อ (Admin)
+                    <h4 class="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-gear text-rosepink-500"></i> จัดการรายการในวงล้อ (Admin)
                     </h4>
-                    <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        <div v-for="(prize, index) in roulettePrizes" :key="index" class="flex items-center gap-2 bg-cream-50 p-2.5 rounded-xl border border-cream-200">
-                            <select v-model="prize.icon" @change="onPrizeIconChange(prize)" class="px-2 py-1.5 bg-white border border-cream-300 rounded-lg text-xs font-semibold focus:outline-none">
+
+                    <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                        <div v-for="(prize, index) in roulettePrizes" :key="index" class="flex items-center gap-2 bg-cream-50 p-2 rounded-xl border border-cream-200 text-xs">
+                            <select v-model="prize.icon" @change="saveRoulettePrizes" class="px-2 py-1 bg-white border border-cream-300 rounded-lg">
                                 <option value="🌹">🌹 กุหลาบ</option>
                                 <option value="🪙">🪙 เหรียญทอง</option>
                                 <option value="🎫">🎫 ตั๋ว</option>
                             </select>
-                            <input type="text" v-model="prize.label" placeholder="ชื่อรางวัล" class="flex-1 px-2.5 py-1.5 bg-white border border-cream-300 rounded-lg text-xs font-semibold focus:outline-none">
-                            <button @click="removeRoulettePrize(index)" class="w-7 h-7 bg-rosepink-100 hover:bg-rosepink-200 text-rosepink-600 rounded-lg flex items-center justify-center text-xs transition" title="ลบรางวัล">
-                                <i class="fa-solid fa-trash"></i>
+                            <input type="text" v-model="prize.label" @input="saveRoulettePrizes" placeholder="ชื่อรางวัล" class="flex-1 px-2.5 py-1 bg-white border border-cream-300 rounded-lg font-semibold">
+                            <button @click="removeRoulettePrize(index)" class="w-7 h-7 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center transition" title="ลบรางวัล">
+                                <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
                     </div>
+
+                    <!-- Add new prize form -->
                     <div class="flex gap-2 pt-1">
-                        <button @click="addRoulettePrize" class="flex-1 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-plus text-[10px]"></i> เพิ่มช่องรางวัล
-                        </button>
-                        <button @click="saveRoulettePrizes" class="flex-1 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 shadow-xs">
-                            <i class="fa-solid fa-floppy-disk text-[10px]"></i> บันทึกวงล้อ
+                        <select v-model="newPrizeIcon" class="px-2 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
+                            <option value="🌹">🌹 กุหลาบ</option>
+                            <option value="🪙">🪙 เหรียญทอง</option>
+                            <option value="🎫">🎫 ตั๋ว</option>
+                        </select>
+                        <input type="text" v-model="newPrizeLabel" @keyup.enter="addRoulettePrize" placeholder="ชื่อรางวัลใหม่ (เช่น ดอกกุหลาบ 2 ดอก)" class="flex-1 px-3 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
+                        <button @click="addRoulettePrize" class="px-3.5 py-1.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs">
+                            เพิ่ม
                         </button>
                     </div>
                 </div>
@@ -695,6 +717,79 @@
             </div>
         </div>
 
+        <!-- Insufficient ELU Coins Modal -->
+        <div v-if="modals.insufficientCoinsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
+                <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-amber-200 shadow-sm">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-full border border-amber-200">ELU Coin ไม่เพียงพอ</span>
+                    <h3 class="text-xl font-bold text-gray-800 font-serif-title mt-3">เหรียญทองไม่พอหมุนวงล้อ</h3>
+                    <p class="text-xs text-gray-500 mt-1">คุณต้องการ 20 ELU Coin แต่ปัจจุบันคุณมี <span class="font-bold text-amber-600">{{ currentCoinCount }}</span> เหรียญเท่านั้น</p>
+                </div>
+                <button @click="closeModal('insufficientCoinsModal')" class="w-full py-3 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-2xl shadow-md text-xs">
+                    เข้าใจแล้ว
+                </button>
+            </div>
+        </div>
+
+        <!-- Admin Notification Center Modal -->
+        <div v-if="modals.adminNotificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-lg rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 space-y-4 max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center border-b border-cream-200 pb-3 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 bg-rosepink-50 text-rosepink-600 rounded-xl flex items-center justify-center border border-rosepink-200">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-800 font-serif-title">Admin Push Notifications 🔔</h3>
+                            <p class="text-[10px] text-gray-500">ประวัติการมอบดอกกุหลาบระหว่าง Visitor</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button v-if="adminNotifications.length > 0" @click="markAllNotificationsAsRead" class="text-[11px] text-rosepink-600 hover:underline font-semibold">
+                            อ่านทั้งหมดแล้ว
+                        </button>
+                        <button @click="closeModal('adminNotificationModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <div class="space-y-3 overflow-y-auto flex-1 pr-1 text-xs">
+                    <div v-for="notif in adminNotifications" :key="notif.id"
+                         class="p-4 rounded-2xl border transition flex items-start gap-3"
+                         :class="notif.read ? 'bg-cream-50/60 border-cream-200 text-gray-600' : 'bg-rosepink-50/80 border-rosepink-200 text-gray-800 shadow-xs'">
+                        <div class="w-10 h-10 rounded-xl bg-white border border-rosepink-200 flex items-center justify-center text-xl shrink-0 shadow-xs">
+                            {{ notif.visitorAvatar || '👤' }}
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-bold text-rosepink-700">{{ notif.visitorName }}</span>
+                                <span class="text-[10px] text-gray-400">{{ formatDate(notif.timestamp) }}</span>
+                            </div>
+                            <p class="font-semibold text-xs mt-0.5">มอบดอกกุหลาบจำนวน <span class="text-rosepink-600 font-bold">{{ notif.amount }} ดอก</span></p>
+                            <p class="text-gray-500 text-[11px] mt-1 bg-white/70 p-2 rounded-xl border border-cream-200">
+                                <span class="font-semibold text-gray-700">หมายเหตุ:</span> {{ notif.note || 'ไม่มีหมายเหตุ' }}
+                            </p>
+                        </div>
+                        <button @click="deleteNotification(notif.id)" class="text-gray-400 hover:text-rosepink-600 p-1" title="ลบการแจ้งเตือน">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div v-if="adminNotifications.length === 0" class="py-12 text-center text-gray-400">
+                        ยังไม่มีการแจ้งเตือน Push Notification จาก Visitor
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-cream-200 flex justify-end shrink-0">
+                    <button @click="closeModal('adminNotificationModal')" class="px-4 py-2 bg-cream-200 hover:bg-cream-300 text-gray-700 font-semibold rounded-xl text-xs">
+                        ปิด
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -721,29 +816,33 @@
 
                 const roulettePrizes = ref(JSON.parse(localStorage.getItem('rose_vault_prizes')) || defaultPrizes);
 
-                const onPrizeIconChange = (prize) => {
-                    if (prize.icon === '🌹') prize.label = 'ดอกกุหลาบ 1 ดอก';
-                    else if (prize.icon === '🪙') prize.label = 'ELU Coin 10 เหรียญ';
-                    else if (prize.icon === '🎫') prize.label = 'ตั๋ว 1:1 1 ใบ';
-                };
+                const newPrizeIcon = ref('🌹');
+                const newPrizeLabel = ref('');
 
                 const addRoulettePrize = () => {
-                    roulettePrizes.value.push({ label: 'รางวัลใหม่', icon: '🌹', description: 'รางวัลพิเศษจากวงล้อ' });
-                    nextTick(() => { drawWheel(0); });
+                    const label = newPrizeLabel.value.trim();
+                    if (!label) {
+                        triggerToast('กรุณาพิมพ์ชื่อรางวัลใหม่ก่อน');
+                        return;
+                    }
+                    roulettePrizes.value.push({ label, icon: newPrizeIcon.value, description: 'รับ ' + label });
+                    newPrizeLabel.value = '';
+                    saveRoulettePrizes();
                 };
 
                 const removeRoulettePrize = (index) => {
                     if (roulettePrizes.value.length <= 2) {
-                        triggerToast('ต้องมีช่องรางวัลอย่างน้อย 2 ช่อง');
+                        triggerToast('ต้องมีรางวัลในวงล้ออย่างน้อย 2 รายการ');
                         return;
                     }
                     roulettePrizes.value.splice(index, 1);
-                    nextTick(() => { drawWheel(0); });
+                    saveRoulettePrizes();
                 };
 
+                // บันทึกอัตโนมัติทุกครั้งที่แก้ไข (ไม่ต้องกดปุ่มบันทึก)
                 const saveRoulettePrizes = () => {
+                    roulettePrizes.value.forEach(p => { p.description = 'รับ ' + (p.label || ''); });
                     localStorage.setItem('rose_vault_prizes', JSON.stringify(roulettePrizes.value));
-                    triggerToast('บันทึกการตั้งค่าวงล้อเรียบร้อยแล้ว! ✨');
                     nextTick(() => { drawWheel(0); });
                 };
 
@@ -951,6 +1050,7 @@
                         if (actualDelta !== 0) {
                             const adminName = currentIdentity.value ? currentIdentity.value.name : 'Admin';
                             addLog(vid, 'rose_received', actualDelta > 0 ? 'add' : 'remove', Math.abs(actualDelta),
+                                actualDelta > 0 ? 'ได้รับดอกกุหลาบ (ไม่เปิดเผยตัวตน) 💌' : 'ปรับลดกุหลาบที่ได้รับ',
                                 `[Admin: ${adminName}] ปรับยอดกุหลาบที่ได้รับของ ${visitor.name}`);
                             triggerToast(`อัปเดตกุหลาบที่ได้รับของ ${visitor.name} เป็น ${userReceivedRosesMap.value[vid]} ดอก`);
                         }
@@ -967,6 +1067,7 @@
                     if (diff !== 0) {
                         const adminName = currentIdentity.value ? currentIdentity.value.name : 'Admin';
                         addLog(vid, itemId, diff > 0 ? 'add' : 'remove', Math.abs(diff),
+                            'ปรับยอดของในคลัง',
                             `[Admin: ${adminName}] ปรับยอดของ ${visitor.name}`);
                         triggerToast(`อัปเดต ${item.name} ของ ${visitor.name} เป็น ${item.count} ${item.unit}`);
                     }
@@ -999,14 +1100,27 @@
                 const inventoryLogs = ref(JSON.parse(localStorage.getItem('rose_vault_logs')) || []);
                 let logSeq = 0;
                 // ทุก log ผูกกับเจ้าของคลัง (userId) เพื่อให้ Visitor เห็นเฉพาะประวัติของตัวเอง
-                const addLog = (userId, itemId, changeType, amount, note) => {
+                // note = ข้อความที่ Visitor เห็น, adminNote = ข้อความเต็มสำหรับ Admin (เช่น ชื่อผู้มอบ)
+                const addLog = (userId, itemId, changeType, amount, note, adminNote = null) => {
                     inventoryLogs.value.unshift({
                         id: `log-${Date.now()}-${logSeq++}`,
                         timestamp: Date.now(),
-                        userId, itemId, changeType, amount, note
+                        userId, itemId, changeType, amount, note, adminNote
                     });
                 };
                 const myLogs = computed(() => inventoryLogs.value.filter(l => currentIdentity.value && l.userId === currentIdentity.value.id));
+
+                const adminLogsFilter = ref('all');
+                const adminFilteredLogs = computed(() => adminLogsFilter.value === 'all'
+                    ? inventoryLogs.value
+                    : inventoryLogs.value.filter(l => l.userId === adminLogsFilter.value));
+
+                // Admin Push Notifications (สร้างเมื่อมีการมอบดอกกุหลาบ)
+                const adminNotifications = ref(JSON.parse(localStorage.getItem('rose_vault_admin_notifications')) || []);
+                const unreadAdminNotificationsCount = computed(() => adminNotifications.value.filter(n => !n.read).length);
+                watch(adminNotifications, (val) => localStorage.setItem('rose_vault_admin_notifications', JSON.stringify(val)), { deep: true });
+                const markAllNotificationsAsRead = () => { adminNotifications.value.forEach(n => { n.read = true; }); };
+                const deleteNotification = (id) => { adminNotifications.value = adminNotifications.value.filter(n => n.id !== id); };
 
                 const totalRosesReceived = computed(() => {
                     const uid = currentIdentity.value ? currentIdentity.value.id : 'default';
@@ -1018,6 +1132,11 @@
                     return rose ? rose.count : 0;
                 });
 
+                const currentCoinCount = computed(() => {
+                    const coin = inventoryItems.value.find(i => i.id === 'elu_coin');
+                    return coin ? coin.count : 0;
+                });
+
                 watch(userInventoriesMap, (val) => localStorage.setItem('rose_vault_user_inventories', JSON.stringify(val)), { deep: true });
                 watch(inventoryLogs, (val) => localStorage.setItem('rose_vault_logs', JSON.stringify(val)), { deep: true });
                 watch(userReceivedRosesMap, (val) => localStorage.setItem('rose_vault_user_received_map', JSON.stringify(val)), { deep: true });
@@ -1027,7 +1146,9 @@
                     identityModal: false,
                     rouletteResult: false,
                     rouletteModal: false,
-                    giftModal: false
+                    giftModal: false,
+                    insufficientCoinsModal: false,
+                    adminNotificationModal: false
                 });
 
                 const formGift = ref({ recipientId: '', amount: 1 });
@@ -1053,11 +1174,23 @@
 
                     const recipient = identities.find(i => i.id === recipientId);
                     const recipientName = recipient ? recipient.name : 'Visitor';
-                    const senderId = currentIdentity.value ? currentIdentity.value.id : null;
+                    const sender = currentIdentity.value;
 
-                    // ผู้ส่งเห็นว่าส่งให้ใคร / ผู้รับไม่เห็นชื่อผู้ส่ง (Admin เห็นทั้งสองฝั่ง)
-                    addLog(senderId, 'rose', 'remove', amount, `มอบดอกกุหลาบแบบไม่แสดงตัวตนให้ ${recipientName}`);
-                    addLog(recipientId, 'rose_received', 'add', amount, 'ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌');
+                    // ผู้ส่งเห็นว่าส่งให้ใคร / ผู้รับไม่เห็นชื่อผู้ส่ง / Admin เห็นชื่อผู้มอบ
+                    addLog(sender.id, 'rose', 'remove', amount, `มอบดอกกุหลาบแบบไม่แสดงตัวตนให้ ${recipientName}`);
+                    addLog(recipientId, 'rose_received', 'add', amount, 'ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌',
+                        `ได้รับดอกกุหลาบจากผู้มอบ: ${sender.name}`);
+
+                    adminNotifications.value.unshift({
+                        id: `notif-${Date.now()}-${logSeq++}`,
+                        timestamp: Date.now(),
+                        visitorId: recipientId,
+                        visitorName: `${sender.name} ➔ ${recipientName}`,
+                        visitorAvatar: sender.avatar,
+                        amount: amount,
+                        note: `ส่งมอบดอกกุหลาบจำนวน ${amount} ดอกให้ ${recipientName} แบบไม่เปิดเผยตัวตน`,
+                        read: false
+                    });
 
                     closeModal('giftModal');
                     triggerToast(`มอบดอกกุหลาบจำนวน ${amount} ดอกให้ ${recipientName} แบบไม่แสดงตัวตนสำเร็จ! 🎁`);
@@ -1070,8 +1203,8 @@
                     if (!isAdmin.value) {
                         const coinItem = inventoryItems.value.find(i => i.id === 'elu_coin');
                         const currentCoins = coinItem ? coinItem.count : 0;
-                        if (currentCoins < 20) {
-                            triggerToast('ELU Coin ของคุณไม่เพียงพอ! ต้องการ 20 เหรียญต่อการหมุน 1 ครั้ง 🪙');
+                        if (!currentIdentity.value || currentCoins < 20) {
+                            openModal('insufficientCoinsModal');
                             return;
                         }
                         coinItem.count -= 20;
@@ -1111,7 +1244,8 @@
                             isSpinning.value = false;
                             winnerPrize.value = prizes[winningIndex];
                             drawWheel(targetAngle);
-                            applyRouletteReward(winnerPrize.value);
+                            // Admin หมุนทดสอบได้ แต่รางวัลเข้าคลังเฉพาะ Visitor
+                            if (!isAdmin.value) applyRouletteReward(winnerPrize.value);
                             modals.value.rouletteResult = true;
                             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                         }
@@ -1202,10 +1336,10 @@
 
                 const getItemName = (id) => {
                     const map = {
-                        rose: 'ดอกกุหลาบ',
-                        rose_received: 'ดอกกุหลาบที่ได้รับ',
-                        elu_coin: 'ELU Coin',
-                        ticket_1to1: 'ตั๋ว 1:1'
+                        rose: '🌹 ดอกกุหลาบ',
+                        rose_received: '💌 ดอกกุหลาบที่ได้รับ',
+                        elu_coin: '🪙 ELU Coin',
+                        ticket_1to1: '🎫 ตั๋ว 1:1'
                     };
                     return map[id] || id;
                 };
@@ -1235,7 +1369,8 @@
                     isSpinning,
                     winnerPrize,
                     roulettePrizes,
-                    onPrizeIconChange,
+                    newPrizeIcon,
+                    newPrizeLabel,
                     addRoulettePrize,
                     removeRoulettePrize,
                     saveRoulettePrizes,
@@ -1263,8 +1398,15 @@
                     inventoryItems,
                     inventoryLogs,
                     myLogs,
+                    adminLogsFilter,
+                    adminFilteredLogs,
+                    adminNotifications,
+                    unreadAdminNotificationsCount,
+                    markAllNotificationsAsRead,
+                    deleteNotification,
                     totalRosesReceived,
                     currentRoseCount,
+                    currentCoinCount,
                     modals,
                     formGift,
                     submitGiftRose,
