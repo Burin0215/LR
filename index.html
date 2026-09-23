@@ -682,13 +682,22 @@
                 <!-- Canvas Wheel Container -->
                 <div class="relative flex items-center justify-center py-2">
                     <div class="absolute top-0 z-10 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[16px] border-t-rosepink-600 filter drop-shadow-md"></div>
-                    <canvas ref="rouletteCanvas" width="280" height="280" class="max-w-full drop-shadow-lg"></canvas>
+                    <canvas ref="rouletteCanvas" width="320" height="320" class="w-[280px] sm:w-[320px] max-w-full h-auto aspect-square drop-shadow-lg"></canvas>
+                </div>
+
+                <!-- ยอดเหรียญคงเหลือ (Visitor) -->
+                <div v-if="currentIdentity && !isAdmin" class="w-full flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-xs">
+                    <span class="text-gray-600 whitespace-nowrap">🪙 ELU Coin ของคุณ</span>
+                    <span class="text-right leading-tight">
+                        <span class="font-bold text-amber-600 whitespace-nowrap">{{ currentCoinCount }} เหรียญ</span>
+                        <span class="block text-[10px] text-gray-400 whitespace-nowrap">หมุนได้อีก {{ Math.floor(currentCoinCount / 20) }} ครั้ง</span>
+                    </span>
                 </div>
 
                 <button @click="spinWheel" :disabled="isSpinning"
                         class="w-full py-3.5 bg-gradient-to-r from-rosepink-500 to-rosepink-600 hover:from-rosepink-600 hover:to-rosepink-700 text-white font-bold rounded-2xl shadow-md transition disabled:opacity-50 text-sm flex items-center justify-center gap-2">
                     <i class="fa-solid fa-dharmachakra" :class="{'fa-spin': isSpinning}"></i>
-                    <span>{{ isSpinning ? 'กำลังหมุนวงล้อ...' : 'หมุนวงล้อเสี่ยงโชค! ✨ (ใช้ 20 ELU Coin)' }}</span>
+                    <span>{{ isSpinning ? 'กำลังหมุนวงล้อ...' : (isAdmin ? 'หมุนทดสอบ (Admin ไม่ได้รับรางวัล)' : 'หมุนวงล้อเสี่ยงโชค! ✨ (ใช้ 20 ELU Coin)') }}</span>
                 </button>
 
                 <!-- Admin Roulette Customizer Section -->
@@ -935,61 +944,104 @@
                 };
 
                 // Perfected drawWheel: angle 0 points straight up (top pointer).
+                const WHEEL_SIZE = 320; // ขนาดวาดจริง (logical px) — CSS ย่อให้พอดีจอ
+                const HUB_RADIUS = 23;
+
                 const drawWheel = (rotationAngle = 0) => {
                     const canvas = rouletteCanvas.value;
                     if (!canvas) return;
                     const ctx = canvas.getContext('2d');
-                    const width = canvas.width;
-                    const height = canvas.height;
-                    const centerX = width / 2;
-                    const centerY = height / 2;
-                    const radius = Math.min(centerX, centerY) - 10;
 
-                    ctx.clearRect(0, 0, width, height);
+                    // วาดความละเอียดตามจอ (มือถือ/Retina) เพื่อไม่ให้ตัวหนังสือเบลอ
+                    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+                    if (canvas.width !== WHEEL_SIZE * dpr) {
+                        canvas.width = WHEEL_SIZE * dpr;
+                        canvas.height = WHEEL_SIZE * dpr;
+                    }
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                    const centerX = WHEEL_SIZE / 2;
+                    const centerY = WHEEL_SIZE / 2;
+                    const radius = WHEEL_SIZE / 2 - 8;
+
+                    ctx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
 
                     const prizes = roulettePrizes.value;
                     const numSegments = prizes.length;
                     if (numSegments === 0) return;
 
                     const arc = (2 * Math.PI) / numSegments;
+                    // จำนวนช่องเป็นเลขคี่ → ช่องสุดท้ายใช้สีที่ 3 เพื่อไม่ให้สีเดียวกันติดกัน
+                    const fillFor = (i) => (numSegments % 2 === 1 && i === numSegments - 1) ? '#FFE3E8' : (i % 2 === 0 ? '#FCD1D7' : '#FFFFFF');
+
+                    // ขอบนอก
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius + 4, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#E04D70';
+                    ctx.fill();
 
                     ctx.save();
                     ctx.translate(centerX, centerY);
                     ctx.rotate(rotationAngle);
-                    ctx.translate(-centerX, -centerY);
+
+                    const iconX = radius - 17;          // ไอคอนอยู่ใกล้ขอบ
+                    const labelStart = radius - 31;     // ชื่อรางวัลเริ่มถัดจากไอคอน
+                    const labelRoom = labelStart - HUB_RADIUS - 6; // พื้นที่ถึงวงกลมกลาง
+
+                    // ใช้ขนาดตัวอักษรเดียวกันทั้งวงล้อ = ขนาดที่ชื่อยาวที่สุดยังพอดีช่อง (13 → 9px)
+                    let fontSize = 13;
+                    const fits = (size) => {
+                        ctx.font = `600 ${size}px Prompt, sans-serif`;
+                        return prizes.every(p => ctx.measureText(p.label || '').width <= labelRoom);
+                    };
+                    while (fontSize > 9 && !fits(fontSize)) fontSize -= 1;
+                    const labelFont = `600 ${fontSize}px Prompt, sans-serif`;
 
                     for (let i = 0; i < numSegments; i++) {
                         const startAngle = i * arc - Math.PI / 2;
-                        const endAngle = (i + 1) * arc - Math.PI / 2;
+                        const midAngle = startAngle + arc / 2;
 
                         ctx.beginPath();
-                        ctx.fillStyle = (i % 2 === 0) ? '#FCD1D7' : '#FFFFFF';
-                        ctx.moveTo(centerX, centerY);
-                        ctx.arc(centerX, centerY, radius, startAngle, endAngle, false);
-                        ctx.lineTo(centerX, centerY);
+                        ctx.moveTo(0, 0);
+                        ctx.arc(0, 0, radius, startAngle, startAngle + arc, false);
+                        ctx.closePath();
+                        ctx.fillStyle = fillFor(i);
                         ctx.fill();
-                        ctx.strokeStyle = '#E04D70';
+                        ctx.strokeStyle = '#F07590';
                         ctx.lineWidth = 1.5;
                         ctx.stroke();
 
+                        // ช่องที่อยู่ครึ่งซ้ายของวงล้อ (ตามมุมที่หมุนอยู่ตอนนี้) กลับด้านตัวหนังสือให้อ่านได้ไม่คว่ำ
+                        const flipped = Math.cos(midAngle + rotationAngle) < 0;
+                        const dir = flipped ? -1 : 1;
+
                         ctx.save();
-                        ctx.translate(centerX, centerY);
-                        ctx.rotate(startAngle + arc / 2);
-                        ctx.textAlign = 'right';
-                        ctx.fillStyle = '#4A3E3D';
+                        ctx.rotate(flipped ? midAngle + Math.PI : midAngle);
+                        ctx.textBaseline = 'middle';
+
                         const prize = prizes[i];
-                        const text = (prize.icon || '') + ' ' + (prize.label || '');
-                        // ชื่อยาวใช้ตัวอักษรเล็กลง ไม่ให้ทับวงกลมตรงกลาง
-                        ctx.font = `bold ${text.length > 14 ? 10 : 12}px Prompt`;
-                        ctx.fillText(text, radius - 20, 5);
+                        ctx.textAlign = 'center';
+                        ctx.font = '16px sans-serif';
+                        ctx.fillText(prize.icon || '', dir * iconX, 0);
+
+                        // ชื่อที่ยาวเกินแม้ใช้ตัวเล็กสุดแล้ว ค่อยตัดด้วย …
+                        let label = prize.label || '';
+                        ctx.font = labelFont;
+                        while (ctx.measureText(label).width > labelRoom && label.length > 1) {
+                            label = label.slice(0, -1);
+                            if (ctx.measureText(label + '…').width <= labelRoom) { label += '…'; break; }
+                        }
+                        ctx.fillStyle = '#4A3E3D';
+                        ctx.textAlign = flipped ? 'left' : 'right';
+                        ctx.fillText(label, dir * labelStart, 0);
                         ctx.restore();
                     }
 
                     ctx.restore();
 
-                    // Draw Center Circle Pointer Hub
+                    // วงกลมตรงกลาง
                     ctx.beginPath();
-                    ctx.arc(centerX, centerY, 22, 0, 2 * Math.PI);
+                    ctx.arc(centerX, centerY, HUB_RADIUS, 0, 2 * Math.PI);
                     ctx.fillStyle = '#E04D70';
                     ctx.fill();
                     ctx.strokeStyle = '#FFFFFF';
@@ -997,10 +1049,10 @@
                     ctx.stroke();
 
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 12px Prompt';
+                    ctx.font = '700 12px Prompt, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('LOVE', centerX, centerY);
+                    ctx.fillText('LOVE', centerX, centerY + 1);
                 };
 
                 const defaultInventoryItems = [
@@ -1352,13 +1404,16 @@
                         if (progress < 1) {
                             requestAnimationFrame(animateSpin);
                         } else {
-                            isSpinning.value = false;
                             winnerPrize.value = prizes[winningIndex];
                             drawWheel(targetAngle);
                             // Admin หมุนทดสอบได้ แต่รางวัลเข้าคลังเฉพาะ Visitor
                             if (!isAdmin.value) applyRouletteReward(winnerPrize.value);
-                            modals.value.rouletteResult = true;
-                            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                            // เว้นจังหวะให้เห็นว่าเข็มหยุดที่ช่องไหน ก่อนเปิดหน้าต่างผลรางวัล
+                            setTimeout(() => {
+                                isSpinning.value = false;
+                                modals.value.rouletteResult = true;
+                                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 60 });
+                            }, 700);
                         }
                     };
 
