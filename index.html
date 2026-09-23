@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>สวนกุหลาบ — เข้าสู่ระบบ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="center">
+  <form class="card" id="login-form" autocomplete="off">
+    <div class="brand">
+      <div class="logo">🌹</div>
+      <h1>ระบบสวนกุหลาบ</h1>
+      <p>กรุณาเข้าสู่ระบบ</p>
+    </div>
+
+    <label for="username">User Name</label>
+    <select id="username" required>
+      <option value="" disabled selected>— เลือกชื่อผู้ใช้ —</option>
+    </select>
+
+    <label for="password">Password (4 หลัก)</label>
+    <input id="password" class="pin" type="password" inputmode="numeric"
+           maxlength="4" pattern="\d{4}" placeholder="••••" required />
+
+    <button type="submit" id="submit">เข้าสู่ระบบ</button>
+    <div class="error" id="error" role="alert"></div>
+  </form>
+
+  <script src="auth.js"></script>
+  <script>
+    if (currentSession()) location.replace("home.html");
+
+    const select = document.getElementById("username");
+    for (const a of ACCOUNTS) select.add(new Option(a.name, a.name));
+
+    const pw = document.getElementById("password");
+    pw.addEventListener("input", () => { pw.value = pw.value.replace(/\D/g, "").slice(0, 4); });
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const err = document.getElementById("error");
+      const btn = document.getElementById("submit");
+      err.textContent = "";
+      btn.disabled = true;
+      const session = await login(select.value, pw.value);
+      btn.disabled = false;
+      if (session) {
+        location.href = "home.html";
+      } else {
+        err.textContent = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+        pw.value = "";
+        pw.focus();
+      }
+    });
+  </script>
+</body>
+</html>

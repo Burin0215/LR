@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>สวนกุหลาบ — หน้าหลัก</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="title">🌹 ระบบสวนกุหลาบ</span>
+    <button onclick="logout()">ออกจากระบบ</button>
+  </header>
+
+  <main>
+    <h2>สวัสดี, <span id="who"></span> <span class="badge" id="role"></span></h2>
+
+    <div class="grid">
+      <div class="card"><h3>🌱 แปลงกุหลาบ</h3><p>ดูสถานะแปลงปลูก</p></div>
+      <div class="card"><h3>💧 ตารางรดน้ำ</h3><p>กำหนดการดูแลประจำวัน</p></div>
+      <div class="card"><h3>📦 ผลผลิต</h3><p>บันทึกการเก็บดอก</p></div>
+    </div>
+
+    <section id="admin-panel" hidden>
+      <h2 style="margin-top:32px">แผงผู้ดูแลระบบ</h2>
+      <table>
+        <thead><tr><th>ชื่อผู้ใช้</th><th>สิทธิ์</th></tr></thead>
+        <tbody id="user-rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const s = currentSession();
+    if (!s) location.replace("index.html");
+    else {
+      document.getElementById("who").textContent = s.name;
+      const role = document.getElementById("role");
+      role.textContent = s.role === "admin" ? "Admin" : "User";
+      if (s.role === "admin") {
+        role.classList.add("admin");
+        document.getElementById("admin-panel").hidden = false;
+        document.getElementById("user-rows").innerHTML = ACCOUNTS
+          .map((a) => `<tr><td>${a.name}</td><td><span class="badge ${a.role}">${a.role === "admin" ? "Admin" : "User"}</span></td></tr>`)
+          .join("");
+      }
+    }
+  </script>
+</body>
+</html>
