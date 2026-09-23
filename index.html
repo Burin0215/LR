@@ -112,14 +112,14 @@
 
                 <!-- Identity + Logout -->
                 <div class="order-2 lg:order-3 flex items-center gap-2 shrink-0">
-                    <!-- Visitor Identity Selection Button -->
+                    <!-- Member Identity Selection Button -->
                     <button @click="openModal('identityModal')"
                             class="bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 px-2.5 sm:px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2 sm:gap-2.5 active:scale-95 shadow-xs">
                         <span class="text-lg sm:text-xl">{{ currentIdentity ? currentIdentity.avatar : '👤' }}</span>
                         <div class="text-left">
                             <div class="text-[10px] text-gray-400 font-normal leading-none hidden sm:block">ตัวตนของคุณ</div>
                             <div class="font-bold text-xs leading-tight whitespace-nowrap" :class="isAdmin ? 'text-rosepink-600' : 'text-gray-700'">
-                                {{ currentIdentity ? currentIdentity.name : 'เลือกตัวตน' }}<span v-if="currentIdentity" class="hidden sm:inline"> ({{ isAdmin ? 'Admin' : 'Visitor' }})</span>
+                                {{ currentIdentity ? currentIdentity.name : 'เลือกตัวตน' }}<span v-if="currentIdentity" class="hidden sm:inline"> ({{ isAdmin ? 'Admin' : 'Member' }})</span>
                             </div>
                         </div>
                         <i class="fa-solid fa-chevron-down text-[10px] text-gray-400"></i>
@@ -171,18 +171,18 @@
                                 👑 Admin Control Center
                             </span>
                             <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title mt-2">
-                                จัดการและตรวจสอบ Inventory ของ Visitor แต่ละคน
+                                จัดการและตรวจสอบ Inventory ของ Member แต่ละคน
                             </h2>
-                            <p class="text-xs text-gray-500 mt-1">คลิกที่การ์ด Visitor ด้านล่างเพื่อเข้าสู่หน้าคลังสิ่งของของคนนั้นได้ทันที</p>
+                            <p class="text-xs text-gray-500 mt-1">คลิกที่การ์ด Member ด้านล่างเพื่อเข้าสู่หน้าคลังสิ่งของของคนนั้นได้ทันที</p>
                         </div>
                         <button @click="openModal('resetInventoryModal')"
-                                class="w-full sm:w-auto justify-center px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap shadow-xs" title="รีเซ็ตคลังของ Visitor ทุกคน">
+                                class="w-full sm:w-auto justify-center px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap shadow-xs" title="รีเซ็ตคลังของ Member ทุกคน">
                             <i class="fa-solid fa-rotate-left"></i>
                             <span>Reset คลังทุกคน</span>
                         </button>
                     </div>
 
-                    <!-- Visitors Grid Cards for Admin -->
+                    <!-- Members Grid Cards for Admin -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
                         <div v-for="visitor in visitorIdentities" :key="visitor.id"
                              @click="viewVisitorInventory(visitor)"
@@ -227,9 +227,9 @@
                         <div>
                             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title">
-                                    คลังของ: {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.name : 'Visitor' }}
+                                    คลังของ: {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.name : 'Member' }}
                                 </h2>
-                                <span class="bg-rosepink-50 text-rosepink-600 border border-rosepink-200 text-xs px-2.5 py-0.5 rounded-full font-semibold">Visitor Inventory</span>
+                                <span class="bg-rosepink-50 text-rosepink-600 border border-rosepink-200 text-xs px-2.5 py-0.5 rounded-full font-semibold">Member Inventory</span>
                             </div>
                             <p class="text-xs text-gray-500 mt-1">Admin สามารถเพิ่ม-ลด หรือปรับแต่งจำนวนของในคลังได้โดยตรง</p>
                         </div>
@@ -249,7 +249,7 @@
                             <span>กลับรายชื่อ</span>
                         </button>
                         <button v-if="isAdmin" @click="openModal('resetInventoryModal')"
-                                class="px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="รีเซ็ตคลังของ Visitor ทุกคน">
+                                class="px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="รีเซ็ตคลังของ Member ทุกคน">
                             <i class="fa-solid fa-rotate-left"></i>
                             <span>Reset คลังทุกคน</span>
                         </button>
@@ -343,7 +343,7 @@
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_logs'" class="space-y-6">
                 <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
-                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">ประวัติ Logs {{ adminLogsFilter === 'all' ? 'ทั้งหมดในระบบ' : 'ของ Visitor: ' + getIdentityName(adminLogsFilter) }} 📝</h2>
+                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">ประวัติ Logs {{ adminLogsFilter === 'all' ? 'ทั้งหมดในระบบ' : 'ของ Member: ' + getIdentityName(adminLogsFilter) }} 📝</h2>
                         <p class="text-xs text-gray-500 mt-0.5">ตรวจสอบบันทึกความเคลื่อนไหว (แสดงชื่อผู้มอบดอกกุหลาบสำหรับ Admin)</p>
                     </div>
                     <select v-model="adminLogsFilter"
@@ -613,7 +613,7 @@
                     </div>
 
                     <div>
-                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">ผู้เข้าชม (Visitors)</div>
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">สมาชิก (Members)</div>
                         <div class="grid grid-cols-2 gap-2">
                             <button v-for="user in identities.filter(i => i.role === 'visitor')" :key="user.id"
                                     @click="selectIdentity(user)"
@@ -622,7 +622,7 @@
                                 <span class="text-xl">{{ user.avatar }}</span>
                                 <div>
                                     <div class="font-bold text-gray-800">{{ user.name }}</div>
-                                    <div class="text-[10px] text-gray-400">Visitor</div>
+                                    <div class="text-[10px] text-gray-400">Member</div>
                                 </div>
                             </button>
                         </div>
@@ -681,7 +681,7 @@
                     <canvas ref="rouletteCanvas" width="320" height="320" class="w-[280px] sm:w-[320px] max-w-full h-auto aspect-square drop-shadow-lg"></canvas>
                 </div>
 
-                <!-- ยอดเหรียญคงเหลือ (Visitor) -->
+                <!-- ยอดเหรียญคงเหลือ (Member) -->
                 <div v-if="currentIdentity && !isAdmin" class="w-full flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-xs">
                     <span class="text-gray-600 whitespace-nowrap">🪙 ELU Coin ของคุณ</span>
                     <span class="text-right leading-tight">
@@ -763,7 +763,7 @@
                     <div>
                         <label class="block font-semibold text-gray-700 mb-1">เลือกผู้รับดอกกุหลาบ</label>
                         <select v-model="formGift.recipientId" class="w-full px-3 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400">
-                            <option value="" disabled>-- เลือก Visitor ที่ต้องการมอบให้ --</option>
+                            <option value="" disabled>-- เลือก Member ที่ต้องการมอบให้ --</option>
                             <option v-for="visitor in visitorIdentities.filter(v => currentIdentity && v.id !== currentIdentity.id)" :key="visitor.id" :value="visitor.id">
                                 {{ visitor.avatar }} {{ visitor.name }}
                             </option>
@@ -814,7 +814,7 @@
                 </div>
                 <div>
                     <h3 class="text-lg font-bold text-gray-800 font-serif-title">Reset คลังของทุกคน?</h3>
-                    <p class="text-xs text-gray-500 mt-1">ของทุกรายการของ Visitor ทั้ง {{ visitorIdentities.length }} คน จะถูกตั้งเป็น 0 (ดอกกุหลาบ, ดอกกุหลาบที่ได้รับ, ELU Coin, ตั๋ว 1:1) และบันทึกลงประวัติ</p>
+                    <p class="text-xs text-gray-500 mt-1">ของทุกรายการของ Member ทั้ง {{ visitorIdentities.length }} คน จะถูกตั้งเป็น 0 (ดอกกุหลาบ, ดอกกุหลาบที่ได้รับ, ELU Coin, ตั๋ว 1:1) และบันทึกลงประวัติ</p>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button @click="closeModal('resetInventoryModal')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">
@@ -837,7 +837,7 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-bold text-gray-800 font-serif-title">Admin Push Notifications 🔔</h3>
-                            <p class="text-[10px] text-gray-500">ประวัติการมอบดอกกุหลาบระหว่าง Visitor</p>
+                            <p class="text-[10px] text-gray-500">ประวัติการมอบดอกกุหลาบระหว่าง Member</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -871,7 +871,7 @@
                     </div>
 
                     <div v-if="adminNotifications.length === 0" class="py-12 text-center text-gray-400">
-                        ยังไม่มีการแจ้งเตือน Push Notification จาก Visitor
+                        ยังไม่มีการแจ้งเตือน Push Notification จาก Member
                     </div>
                 </div>
 
@@ -1069,7 +1069,7 @@
                     name: a.name,
                     avatar: avatars[a.name] || '👤',
                     role: a.role === 'admin' ? 'admin' : 'visitor',
-                    description: a.role === 'admin' ? 'ผู้ดูแลคลังกุหลาบ (Admin)' : 'ผู้เข้าชม (Visitor)'
+                    description: a.role === 'admin' ? 'ผู้ดูแลคลังกุหลาบ (Admin)' : 'สมาชิก (Member)'
                 }));
                 const getIdentityName = (id) => (identities.find(i => i.id === id) || {}).name || '-';
 
@@ -1103,8 +1103,8 @@
                 const displayTabs = computed(() => {
                     if (isAdmin.value) {
                         return [
-                            { id: 'admin_visitors', name: 'รายชื่อ Visitors 👥', icon: 'fa-solid fa-users text-rosepink-400' },
-                            { id: 'admin_visitor_inventory', name: selectedVisitorForAdmin.value ? `คลังของ ${selectedVisitorForAdmin.value.name} 🎒` : 'คลัง Visitor 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
+                            { id: 'admin_visitors', name: 'รายชื่อ Members 👥', icon: 'fa-solid fa-users text-rosepink-400' },
+                            { id: 'admin_visitor_inventory', name: selectedVisitorForAdmin.value ? `คลังของ ${selectedVisitorForAdmin.value.name} 🎒` : 'คลัง Member 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
                             { id: 'admin_logs', name: 'ประวัติ Logs ทั้งหมด 📝', icon: 'fa-solid fa-history' }
                         ];
                     }
@@ -1240,8 +1240,8 @@
 
                 const inventoryLogs = ref(JSON.parse(localStorage.getItem('rose_vault_logs')) || []);
                 let logSeq = 0;
-                // ทุก log ผูกกับเจ้าของคลัง (userId) เพื่อให้ Visitor เห็นเฉพาะประวัติของตัวเอง
-                // note = ข้อความที่ Visitor เห็น, adminNote = ข้อความเต็มสำหรับ Admin (เช่น ชื่อผู้มอบ)
+                // ทุก log ผูกกับเจ้าของคลัง (userId) เพื่อให้ Member เห็นเฉพาะประวัติของตัวเอง
+                // note = ข้อความที่ Member เห็น, adminNote = ข้อความเต็มสำหรับ Admin (เช่น ชื่อผู้มอบ)
                 const addLog = (userId, itemId, changeType, amount, note, adminNote = null) => {
                     inventoryLogs.value.unshift({
                         id: `log-${Date.now()}-${logSeq++}`,
@@ -1293,7 +1293,7 @@
                     resetInventoryModal: false
                 });
 
-                // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Visitor ทุกคนเป็น 0
+                // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Member ทุกคนเป็น 0
                 // (ใช้ logic เดียวกับ Delete จึงบันทึก log ทุกรายการที่ถูกล้าง)
                 const adminResetAllInventories = () => {
                     if (!isAdmin.value) return;
@@ -1307,7 +1307,7 @@
                         });
                     });
                     closeModal('resetInventoryModal');
-                    triggerToast('Reset คลังของ Visitor ทุกคนเรียบร้อยแล้ว');
+                    triggerToast('Reset คลังของ Member ทุกคนเรียบร้อยแล้ว');
                 };
 
                 const formGift = ref({ recipientId: '', amount: 1 });
@@ -1332,7 +1332,7 @@
                     userReceivedRosesMap.value[recipientId] += amount;
 
                     const recipient = identities.find(i => i.id === recipientId);
-                    const recipientName = recipient ? recipient.name : 'Visitor';
+                    const recipientName = recipient ? recipient.name : 'Member';
                     const sender = currentIdentity.value;
 
                     // ผู้ส่งเห็นว่าส่งให้ใคร / ผู้รับไม่เห็นชื่อผู้ส่ง / Admin เห็นชื่อผู้มอบ
@@ -1402,7 +1402,7 @@
                         } else {
                             winnerPrize.value = prizes[winningIndex];
                             drawWheel(targetAngle);
-                            // Admin หมุนทดสอบได้ แต่รางวัลเข้าคลังเฉพาะ Visitor
+                            // Admin หมุนทดสอบได้ แต่รางวัลเข้าคลังเฉพาะ Member
                             if (!isAdmin.value) applyRouletteReward(winnerPrize.value);
                             // เว้นจังหวะให้เห็นว่าเข็มหยุดที่ช่องไหน ก่อนเปิดหน้าต่างผลรางวัล
                             setTimeout(() => {
