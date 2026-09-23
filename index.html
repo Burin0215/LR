@@ -179,6 +179,11 @@
                             </h2>
                             <p class="text-xs text-gray-500 mt-1">คลิกที่การ์ด Visitor ด้านล่างเพื่อเข้าสู่หน้าคลังสิ่งของของคนนั้นได้ทันที</p>
                         </div>
+                        <button @click="openModal('resetInventoryModal')"
+                                class="w-full sm:w-auto justify-center px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap shadow-xs" title="รีเซ็ตคลังของ Visitor ทุกคน">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Reset คลังทุกคน</span>
+                        </button>
                     </div>
 
                     <!-- Visitors Grid Cards for Admin -->
@@ -248,9 +253,9 @@
                             <span>กลับรายชื่อ</span>
                         </button>
                         <button v-if="isAdmin" @click="openModal('resetInventoryModal')"
-                                class="px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="รีเซ็ตคลังของ Visitor คนนี้">
+                                class="px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="รีเซ็ตคลังของ Visitor ทุกคน">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>Reset คลัง</span>
+                            <span>Reset คลังทุกคน</span>
                         </button>
                     </div>
                 </div>
@@ -803,14 +808,14 @@
                     <i class="fa-solid fa-rotate-left"></i>
                 </div>
                 <div>
-                    <h3 class="text-lg font-bold text-gray-800 font-serif-title">Reset คลังของ {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.name : '' }}?</h3>
-                    <p class="text-xs text-gray-500 mt-1">ของทุกรายการจะถูกตั้งเป็น 0 (ดอกกุหลาบ, ดอกกุหลาบที่ได้รับ, ELU Coin, ตั๋ว 1:1) และบันทึกลงประวัติ</p>
+                    <h3 class="text-lg font-bold text-gray-800 font-serif-title">Reset คลังของทุกคน?</h3>
+                    <p class="text-xs text-gray-500 mt-1">ของทุกรายการของ Visitor ทั้ง {{ visitorIdentities.length }} คน จะถูกตั้งเป็น 0 (ดอกกุหลาบ, ดอกกุหลาบที่ได้รับ, ELU Coin, ตั๋ว 1:1) และบันทึกลงประวัติ</p>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button @click="closeModal('resetInventoryModal')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">
                         ยกเลิก
                     </button>
-                    <button @click="adminResetSelectedVisitorInventory" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md">
+                    <button @click="adminResetAllInventories" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md">
                         ยืนยัน Reset
                     </button>
                 </div>
@@ -1119,10 +1124,12 @@
                     return userInventoriesMap.value[vid];
                 });
 
-                const adminAdjustSelectedVisitorItem = (itemId, delta) => {
-                    const vid = selectedVisitorIdForAdmin.value;
-                    const visitor = selectedVisitorForAdmin.value;
-                    if (!vid || !visitor) return;
+                const adminAdjustSelectedVisitorItem = (itemId, delta) =>
+                    adminAdjustVisitorItem(selectedVisitorForAdmin.value, itemId, delta);
+
+                const adminAdjustVisitorItem = (visitor, itemId, delta) => {
+                    if (!visitor) return;
+                    const vid = visitor.id;
 
                     if (!userInventoriesMap.value[vid]) {
                         userInventoriesMap.value[vid] = JSON.parse(JSON.stringify(defaultInventoryItems));
@@ -1238,20 +1245,21 @@
                     resetInventoryModal: false
                 });
 
-                // Admin เท่านั้น: ตั้งของทุกรายการของ Visitor ที่เลือกเป็น 0 (ใช้ logic เดียวกับ Delete จึงบันทึก log ทุกรายการ)
-                const adminResetSelectedVisitorInventory = () => {
+                // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Visitor ทุกคนเป็น 0
+                // (ใช้ logic เดียวกับ Delete จึงบันทึก log ทุกรายการที่ถูกล้าง)
+                const adminResetAllInventories = () => {
                     if (!isAdmin.value) return;
-                    const vid = selectedVisitorIdForAdmin.value;
-                    const visitor = selectedVisitorForAdmin.value;
-                    if (!vid || !visitor) return;
-                    ['rose', 'rose_received', 'elu_coin', 'ticket_1to1'].forEach(itemId => {
-                        const current = itemId === 'rose_received'
-                            ? (userReceivedRosesMap.value[vid] || 0)
-                            : ((userInventoriesMap.value[vid] || []).find(i => i.id === itemId) || { count: 0 }).count;
-                        if (current > 0) adminAdjustSelectedVisitorItem(itemId, -current);
+                    visitorIdentities.value.forEach(visitor => {
+                        const vid = visitor.id;
+                        ['rose', 'rose_received', 'elu_coin', 'ticket_1to1'].forEach(itemId => {
+                            const current = itemId === 'rose_received'
+                                ? (userReceivedRosesMap.value[vid] || 0)
+                                : ((userInventoriesMap.value[vid] || []).find(i => i.id === itemId) || { count: 0 }).count;
+                            if (current > 0) adminAdjustVisitorItem(visitor, itemId, -current);
+                        });
                     });
                     closeModal('resetInventoryModal');
-                    triggerToast(`Reset คลังของ ${visitor.name} เรียบร้อยแล้ว`);
+                    triggerToast('Reset คลังของ Visitor ทุกคนเรียบร้อยแล้ว');
                 };
 
                 const formGift = ref({ recipientId: '', amount: 1 });
@@ -1491,7 +1499,7 @@
                     adminInputValues,
                     adminAddCustomValue,
                     adminDeleteCustomValue,
-                    adminResetSelectedVisitorInventory,
+                    adminResetAllInventories,
                     selectedIdentityId,
                     pendingIdentity,
                     adminPinInput,
