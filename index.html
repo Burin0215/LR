@@ -263,10 +263,15 @@
                         <div class="flex items-center gap-2">
                             <input type="number" v-model.number="adminInputValues['rose_received']" placeholder="จำนวน"
                                    class="w-20 px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
-                            <button @click="adminAddCustomValue('rose_received')" 
+                            <button @click="adminAddCustomValue('rose_received')"
                                     class="px-3.5 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
                                 <i class="fa-solid fa-plus text-[10px]"></i>
                                 <span>Add</span>
+                            </button>
+                            <button @click="adminDeleteCustomValue('rose_received')"
+                                    class="px-3.5 py-2 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
+                                <i class="fa-solid fa-minus text-[10px]"></i>
+                                <span>Delete</span>
                             </button>
                         </div>
                     </div>
@@ -306,10 +311,15 @@
                             <div class="flex items-center gap-2">
                                 <input type="number" v-model.number="adminInputValues[item.id]" placeholder="จำนวน"
                                        class="w-20 px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
-                                <button @click="adminAddCustomValue(item.id)" 
+                                <button @click="adminAddCustomValue(item.id)"
                                         class="px-3.5 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
                                     <i class="fa-solid fa-plus text-[10px]"></i>
                                     <span>Add</span>
+                                </button>
+                                <button @click="adminDeleteCustomValue(item.id)"
+                                        class="px-3.5 py-2 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
+                                    <i class="fa-solid fa-minus text-[10px]"></i>
+                                    <span>Delete</span>
                                 </button>
                             </div>
                         </div>
@@ -951,15 +961,18 @@
                     rose_received: null
                 });
 
-                const adminAddCustomValue = (itemId) => {
+                // Add / Delete ใช้ช่องจำนวนเดียวกัน: Add = บวกเพิ่ม, Delete = ลบออก (ไม่ต่ำกว่า 0)
+                const adminApplyCustomValue = (itemId, sign) => {
                     const val = adminInputValues.value[itemId];
-                    if (val === null || val === undefined || isNaN(val) || val === 0) {
-                        triggerToast('กรุณากรอกตัวเลขจำนวนที่ต้องการเพิ่ม');
+                    if (val === null || val === undefined || val === '' || isNaN(val) || val === 0) {
+                        triggerToast(sign > 0 ? 'กรุณากรอกตัวเลขจำนวนที่ต้องการเพิ่ม' : 'กรุณากรอกตัวเลขจำนวนที่ต้องการลบ');
                         return;
                     }
-                    adminAdjustSelectedVisitorItem(itemId, Number(val));
+                    adminAdjustSelectedVisitorItem(itemId, sign * Math.abs(Number(val)));
                     adminInputValues.value[itemId] = null;
                 };
+                const adminAddCustomValue = (itemId) => adminApplyCustomValue(itemId, 1);
+                const adminDeleteCustomValue = (itemId) => adminApplyCustomValue(itemId, -1);
 
                 const displayTabs = computed(() => {
                     if (isAdmin.value) {
@@ -1387,6 +1400,7 @@
                     currentAdminVisitorInventory,
                     adminInputValues,
                     adminAddCustomValue,
+                    adminDeleteCustomValue,
                     selectedIdentityId,
                     pendingIdentity,
                     adminPinInput,
