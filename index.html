@@ -65,32 +65,35 @@
         .soft-card-shadow { box-shadow: 0 10px 30px -5px rgba(224, 77, 112, 0.07), 0 4px 12px -2px rgba(171, 136, 109, 0.05); }
         .soft-card-glow { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
         .soft-card-glow:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -4px rgba(240, 117, 144, 0.12); }
-    </style>
+        .no-scrollbar { scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }    </style>
 </head>
 <body class="h-full min-h-screen flex flex-col antialiased">
     <div id="app" class="flex-1 flex flex-col min-h-screen pb-12" v-cloak>
         
         <header class="bg-cream-50/90 backdrop-blur-md sticky top-0 z-30 border-b border-cream-200">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- มือถือ: แถวบน = โลโก้ + ตัวตน, แถวล่าง = ปุ่ม action เต็มความกว้าง / Desktop: แถวเดียว -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-0 lg:h-20 flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-3 gap-y-2.5">
                 <!-- App Title -->
-                <div class="flex items-center space-x-3">
-                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rosepink-200 to-rosepink-100 flex items-center justify-center text-rosepink-500 shadow-xs border border-rosepink-200">
-                        <span class="text-xl">🌹</span>
+                <div class="order-1 flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-rosepink-200 to-rosepink-100 flex items-center justify-center text-rosepink-500 shadow-xs border border-rosepink-200">
+                        <span class="text-lg sm:text-xl">🌹</span>
                     </div>
-                    <div>
-                        <h1 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-800 flex items-center gap-2">
-                            <span class="font-serif-title italic text-rosepink-500">Love Roulette</span>
-                            <span class="text-xs sm:text-sm font-normal text-cream-500 hidden sm:inline">| คลังดอกกุหลาบ</span>
+                    <div class="min-w-0">
+                        <h1 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-800 flex items-center gap-2 leading-tight">
+                            <span class="font-serif-title italic text-rosepink-500 whitespace-nowrap">Love Roulette</span>
+                            <span class="text-xs sm:text-sm font-normal text-cream-500 hidden sm:inline whitespace-nowrap">| คลังดอกกุหลาบ</span>
                         </h1>
-                        <p class="text-[11px] sm:text-xs text-gray-500">จัดการและบันทึกจำนวนของที่มี ณ ปัจจุบัน (ดอกกุหลาบ, ELU Coin, ตั๋ว 1:1)</p>
+                        <p class="text-[11px] text-gray-500 sm:hidden">คลังดอกกุหลาบ 🌹</p>
+                        <p class="text-xs text-gray-500 hidden xl:block">จัดการและบันทึกจำนวนของที่มี ณ ปัจจุบัน (ดอกกุหลาบ, ELU Coin, ตั๋ว 1:1)</p>
                     </div>
                 </div>
 
                 <!-- Global Action Buttons -->
-                <div class="flex items-center space-x-2">
+                <div class="order-3 lg:order-2 w-full lg:w-auto flex items-center gap-2 lg:ml-auto">
                     <!-- Admin Notification Bell Badge Button -->
                     <button v-if="isAdmin" @click="openModal('adminNotificationModal')"
-                            class="relative bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 p-2.5 rounded-xl transition duration-200 flex items-center justify-center active:scale-95 shadow-xs" title="แจ้งเตือน Admin">
+                            class="relative shrink-0 bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 p-2.5 rounded-xl transition duration-200 flex items-center justify-center active:scale-95 shadow-xs" title="แจ้งเตือน Admin">
                         <i class="fa-solid fa-bell text-rosepink-500 text-base"></i>
                         <span v-if="unreadAdminNotificationsCount > 0" class="absolute -top-1.5 -right-1.5 bg-rosepink-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                             {{ unreadAdminNotificationsCount }}
@@ -99,33 +102,36 @@
 
                     <!-- Anonymous Gift Rose Button -->
                     <button v-if="currentIdentity && !isAdmin" @click="openModal('giftModal')"
-                            class="bg-gradient-to-r from-rosepink-400 to-rosepink-500 hover:from-rosepink-500 hover:to-rosepink-600 text-white font-bold px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2 active:scale-95 shadow-md border border-rosepink-300">
+                            class="flex-1 lg:flex-none justify-center bg-gradient-to-r from-rosepink-400 to-rosepink-500 hover:from-rosepink-500 hover:to-rosepink-600 text-white font-bold px-3.5 py-2.5 lg:py-2 rounded-xl transition duration-200 flex items-center gap-2 active:scale-95 shadow-md border border-rosepink-300 whitespace-nowrap">
                         <i class="fa-solid fa-gift"></i>
                         <span class="text-xs sm:text-sm">มอบดอกกุหลาบ 🎁</span>
                     </button>
 
                     <button @click="openRouletteModal"
-                            class="bg-gradient-to-r from-rosepink-500 to-rosepink-600 hover:from-rosepink-600 hover:to-rosepink-700 text-white font-bold px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2 active:scale-95 shadow-md border border-rosepink-300">
+                            class="flex-1 lg:flex-none justify-center bg-gradient-to-r from-rosepink-500 to-rosepink-600 hover:from-rosepink-600 hover:to-rosepink-700 text-white font-bold px-3.5 py-2.5 lg:py-2 rounded-xl transition duration-200 flex items-center gap-2 active:scale-95 shadow-md border border-rosepink-300 whitespace-nowrap">
                         <i class="fa-solid fa-dharmachakra"></i>
                         <span class="text-xs sm:text-sm">Love Roulette 🎡</span>
                     </button>
+                </div>
 
+                <!-- Identity + Logout -->
+                <div class="order-2 lg:order-3 flex items-center gap-2 shrink-0">
                     <!-- Visitor Identity Selection Button -->
                     <button @click="openModal('identityModal')"
-                            class="bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2.5 active:scale-95 shadow-xs">
-                        <span class="text-xl">{{ currentIdentity ? currentIdentity.avatar : '👤' }}</span>
+                            class="bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 px-2.5 sm:px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2 sm:gap-2.5 active:scale-95 shadow-xs">
+                        <span class="text-lg sm:text-xl">{{ currentIdentity ? currentIdentity.avatar : '👤' }}</span>
                         <div class="text-left">
-                            <div class="text-[10px] text-gray-400 font-normal leading-none">ตัวตนของคุณ</div>
-                            <div class="font-bold text-xs leading-tight" :class="isAdmin ? 'text-rosepink-600' : 'text-gray-700'">
-                                {{ currentIdentity ? currentIdentity.name + ' (' + (isAdmin ? 'Admin' : 'Visitor') + ')' : 'เลือกตัวตน' }}
+                            <div class="text-[10px] text-gray-400 font-normal leading-none hidden sm:block">ตัวตนของคุณ</div>
+                            <div class="font-bold text-xs leading-tight whitespace-nowrap" :class="isAdmin ? 'text-rosepink-600' : 'text-gray-700'">
+                                {{ currentIdentity ? currentIdentity.name : 'เลือกตัวตน' }}<span v-if="currentIdentity" class="hidden sm:inline"> ({{ isAdmin ? 'Admin' : 'Visitor' }})</span>
                             </div>
                         </div>
-                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-400 ml-1"></i>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-400"></i>
                     </button>
 
                     <!-- Logout Button for Logged in Users -->
-                    <button v-if="currentIdentity" @click="logoutAdmin" 
-                            class="bg-rosepink-50 hover:bg-rosepink-100 text-rosepink-600 border border-rosepink-200 px-3 py-2 rounded-xl transition duration-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="ออกจากระบบ">
+                    <button v-if="currentIdentity" @click="logoutAdmin"
+                            class="bg-rosepink-50 hover:bg-rosepink-100 text-rosepink-600 border border-rosepink-200 px-3 py-2.5 sm:py-2 rounded-xl transition duration-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="ออกจากระบบ">
                         <i class="fa-solid fa-right-from-bracket"></i>
                         <span class="hidden sm:inline">ออก</span>
                     </button>
@@ -154,7 +160,7 @@
             
             <!-- Toast Notification Popup -->
             <transition name="fade">
-                <div v-if="toast.show" class="fixed bottom-6 right-6 z-50 bg-gray-800 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-gray-700 text-xs sm:text-sm">
+                <div v-if="toast.show" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 bg-gray-800 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-gray-700 text-xs sm:text-sm">
                     <i class="fa-solid fa-circle-check text-rosepink-400 text-base"></i>
                     <span>{{ toast.message }}</span>
                 </div>
@@ -162,7 +168,7 @@
 
             <!-- ADMIN TAB 1: VISITOR LIST VIEW -->
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_visitors'" class="space-y-6">
-                <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-6 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
+                <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-4 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                         <div>
                             <span class="text-xs font-bold text-rosepink-600 uppercase tracking-wider bg-rosepink-50 px-2.5 py-1 rounded-full border border-rosepink-200">
@@ -212,13 +218,13 @@
             <!-- ADMIN TAB 2: FULL INVENTORY VIEW OF SELECTED VISITOR -->
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_visitor_inventory'" class="space-y-6">
                 <!-- Header Card with Switcher Dropdown -->
-                <div class="bg-white p-6 sm:p-8 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="bg-white p-4 sm:p-8 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 rounded-2xl bg-rosepink-100 border border-rosepink-200 flex items-center justify-center text-3xl shadow-sm">
+                        <div class="w-12 h-12 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-rosepink-100 border border-rosepink-200 flex items-center justify-center text-2xl sm:text-3xl shadow-sm">
                             {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.avatar : '👤' }}
                         </div>
                         <div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title">
                                     คลังของ: {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.name : 'Visitor' }}
                                 </h2>
@@ -245,7 +251,7 @@
                 </div>
 
                 <!-- Received Roses Highlight Banner -->
-                <div class="bg-gradient-to-r from-rosepink-50 to-pink-50 p-6 rounded-3xl border border-rosepink-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="bg-gradient-to-r from-rosepink-50 to-pink-50 p-4 sm:p-6 rounded-3xl border border-rosepink-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div class="flex items-center gap-3.5">
                         <div class="w-12 h-12 rounded-2xl bg-rosepink-200 text-rosepink-600 flex items-center justify-center text-2xl shadow-xs">
                             💌
@@ -255,14 +261,14 @@
                             <span class="text-xs text-gray-500">สะสมจากการที่มีผู้อื่นส่งมอบให้แบบไม่เปิดเผยตัวตน</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="w-full sm:w-auto flex items-center gap-3">
                         <span class="text-3xl font-extrabold font-serif-title text-rosepink-600">
                             {{ getVisitorReceivedRoseCount(selectedVisitorIdForAdmin) }}
                         </span>
                         <span class="text-xs text-gray-500 font-medium">ดอก</span>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-1 sm:flex-none justify-end">
                             <input type="number" v-model.number="adminInputValues['rose_received']" placeholder="จำนวน"
-                                   class="w-20 px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
+                                   class="w-16 sm:w-20 min-w-0 px-2 sm:px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
                             <button @click="adminAddCustomValue('rose_received')"
                                     class="px-3.5 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
                                 <i class="fa-solid fa-plus text-[10px]"></i>
@@ -280,14 +286,14 @@
                 <!-- Inventory Item List for Admin to Edit Directly -->
                 <div class="space-y-3">
                     <div v-for="item in currentAdminVisitorInventory.filter(i => i.id !== 'rose_received')":key="item.id"
-                         class="bg-white p-5 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 soft-card-glow">
+                         class="bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 soft-card-glow">
                         <div class="flex items-center gap-4">
                             <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 border"
                                  :class="item.id === 'rose' ? 'bg-rosepink-100 text-rosepink-500 border-rosepink-200' : item.id === 'elu_coin' ? 'bg-amber-100 text-amber-500 border-amber-200' : 'bg-indigo-100 text-indigo-500 border-indigo-200'">
                                 {{ item.icon }}
                             </div>
                             <div>
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                     <h4 class="font-bold text-gray-800 text-base sm:text-lg">{{ item.name }}</h4>
                                     <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
                                           :class="item.id === 'rose' ? 'bg-rosepink-50 text-rosepink-600 border-rosepink-200' : item.id === 'elu_coin' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'">
@@ -299,7 +305,7 @@
                         </div>
 
                         <!-- Quantity and Adjust Controls with custom number input and Add button -->
-                        <div class="flex flex-col sm:flex-row items-end sm:items-center gap-4 self-end sm:self-center">
+                        <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-3 sm:pt-0 border-t border-cream-100 sm:border-0">
                             <div class="text-right">
                                 <span class="text-3xl font-extrabold font-serif-title"
                                       :class="item.id === 'rose' ? 'text-rosepink-600' : item.id === 'elu_coin' ? 'text-amber-600' : 'text-indigo-600'">
@@ -308,9 +314,9 @@
                                 <span class="text-xs text-gray-500 font-medium ml-1.5">{{ item.unit }}</span>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-1 sm:flex-none justify-end">
                                 <input type="number" v-model.number="adminInputValues[item.id]" placeholder="จำนวน"
-                                       class="w-20 px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
+                                       class="w-16 sm:w-20 min-w-0 px-2 sm:px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
                                 <button @click="adminAddCustomValue(item.id)"
                                         class="px-3.5 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
                                     <i class="fa-solid fa-plus text-[10px]"></i>
@@ -329,7 +335,7 @@
 
             <!-- ADMIN TAB 3: ALL LOGS VIEW -->
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_logs'" class="space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-cream-200 soft-card-shadow">
+                <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
                         <h2 class="text-lg font-bold text-gray-800 font-serif-title">ประวัติ Logs {{ adminLogsFilter === 'all' ? 'ทั้งหมดในระบบ' : 'ของ Visitor: ' + getIdentityName(adminLogsFilter) }} 📝</h2>
                         <p class="text-xs text-gray-500 mt-0.5">ตรวจสอบบันทึกความเคลื่อนไหว (แสดงชื่อผู้มอบดอกกุหลาบสำหรับ Admin)</p>
@@ -345,7 +351,7 @@
 
                 <div class="bg-white rounded-3xl border border-cream-200 overflow-hidden soft-card-shadow">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-xs">
+                        <table class="hidden sm:table w-full text-left border-collapse text-xs">
                             <thead>
                                 <tr class="bg-cream-100/70 border-b border-cream-200 text-cream-500 font-semibold uppercase tracking-wider text-[11px]">
                                     <th class="py-3.5 px-6">วันที่ & เวลา</th>
@@ -391,13 +397,34 @@
                                 </tr>
                             </tbody>
                         </table>
+
+                        <!-- มือถือ: แสดงเป็นการ์ดแทนตาราง -->
+                        <div class="sm:hidden divide-y divide-cream-100">
+                            <div v-for="log in adminFilteredLogs" :key="log.id" class="p-4 flex items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="font-semibold text-gray-800 text-sm truncate">{{ getItemName(log.itemId) }}</span>
+                                        <span class="font-bold text-sm whitespace-nowrap" :class="log.changeType === 'add' ? 'text-emerald-600' : 'text-rosepink-600'">
+                                            {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">
+                                        <i class="fa-regular fa-clock text-rosepink-400 mr-1"></i>{{ formatDate(log.timestamp) }} · <span class="font-semibold text-gray-600">{{ getIdentityName(log.userId) }}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1.5">{{ log.adminNote || log.note || '-' }}</p>
+                                </div>
+                            </div>
+                            <div v-if="adminFilteredLogs.length === 0" class="py-12 text-center text-gray-400 text-xs">
+                                ยังไม่มีประวัติการบันทึกข้อมูลในระบบ
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <!-- GUEST / HOME VIEW: Inventory Summary & List displayed immediately when not logged in -->
             <section v-if="!isAdmin" class="w-full">
-                <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-6 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
+                <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-4 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                         <div>
                             <span class="text-xs font-bold text-rosepink-600 uppercase tracking-wider bg-rosepink-50 px-2.5 py-1 rounded-full border border-rosepink-200">
@@ -410,20 +437,21 @@
                     </div>
 
                     <!-- Inventory Summary Cards Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div v-for="item in inventoryItems" :key="item.id" 
-                             class="bg-white/90 p-4 sm:p-5 rounded-2xl border border-cream-300 shadow-xs flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-xs border"
+                    <!-- มือถือ: 2x2 การ์ดแนวตั้ง / จอใหญ่: การ์ดแนวนอน -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <div v-for="item in inventoryItems" :key="item.id"
+                             class="bg-white/90 p-3.5 sm:p-5 rounded-2xl border border-cream-300 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+                            <div class="flex items-center gap-2.5 sm:gap-3">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center text-xl sm:text-2xl shadow-xs border"
                                      :class="item.id === 'rose' ? 'bg-rosepink-100 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-200 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-100 border-amber-200' : 'bg-indigo-100 border-indigo-200'">
                                     {{ item.icon }}
                                 </div>
-                                <div>
-                                    <h4 class="font-bold text-gray-800 text-sm sm:text-base">{{ item.name }}</h4>
-                                    <span class="text-[11px] text-gray-400 block">{{ item.englishName }}</span>
+                                <div class="min-w-0">
+                                    <h4 class="font-bold text-gray-800 text-xs sm:text-base leading-snug">{{ item.name }}</h4>
+                                    <span class="text-[10px] sm:text-[11px] text-gray-400 block">{{ item.englishName }}</span>
                                 </div>
                             </div>
-                            <div class="text-right">
+                            <div class="self-end sm:self-auto text-right">
                                 <span class="text-2xl sm:text-3xl font-extrabold font-serif-title"
                                       :class="item.id === 'rose' ? 'text-rosepink-600' : item.id === 'rose_received' ? 'text-rosepink-700' : item.id === 'elu_coin' ? 'text-amber-600' : 'text-indigo-600'">
                                     {{ item.id === 'rose_received' ? totalRosesReceived : item.count }}
@@ -444,14 +472,14 @@
 
                 <div class="flex flex-col space-y-3 w-full">
                     <div v-for="item in inventoryItems" :key="item.id" 
-                         class="bg-white p-5 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 soft-card-glow w-full">
+                         class="bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 soft-card-glow w-full">
                         <div class="flex items-center gap-4">
                             <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 border"
                                  :class="item.id === 'rose' ? 'bg-rosepink-100 text-rosepink-500 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-200 text-rosepink-700 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-100 text-amber-500 border-amber-200' : 'bg-indigo-100 text-indigo-500 border-indigo-200'">
                                 {{ item.icon }}
                             </div>
                             <div>
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                     <h4 class="font-bold text-gray-800 text-base sm:text-lg">{{ item.name }}</h4>
                                     <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
                                           :class="item.id === 'rose' ? 'bg-rosepink-50 text-rosepink-600 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-100 text-rosepink-700 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'">
@@ -476,7 +504,7 @@
             </section>
 
             <section v-if="!isAdmin && currentTab === 'logs'" class="space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-cream-200 soft-card-shadow">
+                <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
                         <h2 class="text-lg font-bold text-gray-800 font-serif-title">บันทึกประวัติความเคลื่อนไหวของคุณ 📝</h2>
                         <p class="text-xs text-gray-500 mt-0.5">ติดตามย้อนหลังเฉพาะประวัติใน Inventory ของคุณเอง (ไม่เปิดเผยชื่อผู้ส่งดอกกุหลาบ)</p>
@@ -485,7 +513,7 @@
 
                 <div class="bg-white rounded-3xl border border-cream-200 overflow-hidden soft-card-shadow">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-xs">
+                        <table class="hidden sm:table w-full text-left border-collapse text-xs">
                             <thead>
                                 <tr class="bg-cream-100/70 border-b border-cream-200 text-cream-500 font-semibold uppercase tracking-wider text-[11px]">
                                     <th class="py-3.5 px-6">วันที่ & เวลา</th>
@@ -527,6 +555,25 @@
                                 </tr>
                             </tbody>
                         </table>
+
+                        <!-- มือถือ: แสดงเป็นการ์ดแทนตาราง -->
+                        <div class="sm:hidden divide-y divide-cream-100">
+                            <div v-for="log in myLogs" :key="log.id" class="p-4">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-semibold text-gray-800 text-sm truncate">{{ getItemName(log.itemId) }}</span>
+                                    <span class="font-bold text-sm whitespace-nowrap" :class="log.changeType === 'add' ? 'text-emerald-600' : 'text-rosepink-600'">
+                                        {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-gray-400 mt-0.5">
+                                    <i class="fa-regular fa-clock text-rosepink-400 mr-1"></i>{{ formatDate(log.timestamp) }}
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1.5">{{ log.note || '-' }}</p>
+                            </div>
+                            <div v-if="myLogs.length === 0" class="py-12 text-center text-gray-400 text-xs">
+                                ยังไม่มีประวัติการปรับนับรายการใน Inventory ของคุณ
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -642,26 +689,26 @@
 
                     <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
                         <div v-for="(prize, index) in roulettePrizes" :key="index" class="flex items-center gap-2 bg-cream-50 p-2 rounded-xl border border-cream-200 text-xs">
-                            <select v-model="prize.icon" @change="saveRoulettePrizes" class="px-2 py-1 bg-white border border-cream-300 rounded-lg">
+                            <select v-model="prize.icon" @change="saveRoulettePrizes" class="shrink-0 w-[4.5rem] sm:w-auto px-1.5 sm:px-2 py-1 bg-white border border-cream-300 rounded-lg">
                                 <option value="🌹">🌹 กุหลาบ</option>
                                 <option value="🪙">🪙 เหรียญทอง</option>
                                 <option value="🎫">🎫 ตั๋ว</option>
                             </select>
-                            <input type="text" v-model="prize.label" @input="saveRoulettePrizes" placeholder="ชื่อรางวัล" class="flex-1 px-2.5 py-1 bg-white border border-cream-300 rounded-lg font-semibold">
-                            <button @click="removeRoulettePrize(index)" class="w-7 h-7 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center transition" title="ลบรางวัล">
+                            <input type="text" v-model="prize.label" @input="saveRoulettePrizes" placeholder="ชื่อรางวัล" class="flex-1 min-w-0 px-2.5 py-1 bg-white border border-cream-300 rounded-lg font-semibold">
+                            <button @click="removeRoulettePrize(index)" class="shrink-0 w-7 h-7 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center transition" title="ลบรางวัล">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
                     </div>
 
                     <!-- Add new prize form -->
-                    <div class="flex gap-2 pt-1">
-                        <select v-model="newPrizeIcon" class="px-2 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
+                    <div class="flex flex-wrap sm:flex-nowrap gap-2 pt-1">
+                        <select v-model="newPrizeIcon" class="shrink-0 px-2 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
                             <option value="🌹">🌹 กุหลาบ</option>
                             <option value="🪙">🪙 เหรียญทอง</option>
                             <option value="🎫">🎫 ตั๋ว</option>
                         </select>
-                        <input type="text" v-model="newPrizeLabel" @keyup.enter="addRoulettePrize" placeholder="ชื่อรางวัลใหม่ (เช่น ดอกกุหลาบ 2 ดอก)" class="flex-1 px-3 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
+                        <input type="text" v-model="newPrizeLabel" @keyup.enter="addRoulettePrize" placeholder="ชื่อรางวัลใหม่ (เช่น ดอกกุหลาบ 2 ดอก)" class="flex-1 min-w-0 px-3 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
                         <button @click="addRoulettePrize" class="px-3.5 py-1.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs">
                             เพิ่ม
                         </button>
@@ -899,10 +946,10 @@
                         ctx.rotate(startAngle + arc / 2);
                         ctx.textAlign = 'right';
                         ctx.fillStyle = '#4A3E3D';
-                        ctx.font = 'bold 12px Prompt';
-
                         const prize = prizes[i];
                         const text = (prize.icon || '') + ' ' + (prize.label || '');
+                        // ชื่อยาวใช้ตัวอักษรเล็กลง ไม่ให้ทับวงกลมตรงกลาง
+                        ctx.font = `bold ${text.length > 14 ? 10 : 12}px Prompt`;
                         ctx.fillText(text, radius - 20, 5);
                         ctx.restore();
                     }
