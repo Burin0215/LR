@@ -73,19 +73,15 @@
         
         <header class="bg-cream-50/90 backdrop-blur-md sticky top-0 z-30 border-b border-cream-200">
             <!-- มือถือ: แถวบน = โลโก้ + ตัวตน, แถวล่าง = ปุ่ม action เต็มความกว้าง / Desktop: แถวเดียว -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-0 lg:h-20 flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-3 gap-y-2.5">
-                <!-- App Title -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-0 lg:h-[4.5rem] flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-4 gap-y-2.5">
+                <!-- App Title: โลโก้ + ชื่อระบบ / คำอธิบายสั้นบรรทัดล่าง (เหมือนกันทุกขนาดจอ) -->
                 <div class="order-1 flex items-center gap-2.5 sm:gap-3 min-w-0">
-                    <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-rosepink-200 to-rosepink-100 flex items-center justify-center text-rosepink-500 shadow-xs border border-rosepink-200">
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-rosepink-200 to-rosepink-100 flex items-center justify-center shadow-xs border border-rosepink-200">
                         <span class="text-lg sm:text-xl">🌹</span>
                     </div>
-                    <div class="min-w-0">
-                        <h1 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-800 flex items-center gap-2 leading-tight">
-                            <span class="font-serif-title italic text-rosepink-500 whitespace-nowrap">Love Roulette</span>
-                            <span class="text-xs sm:text-sm font-normal text-cream-500 hidden sm:inline whitespace-nowrap">| คลังดอกกุหลาบ</span>
-                        </h1>
-                        <p class="text-[11px] text-gray-500 sm:hidden">คลังดอกกุหลาบ 🌹</p>
-                        <p class="text-xs text-gray-500 hidden xl:block">จัดการและบันทึกจำนวนของที่มี ณ ปัจจุบัน (ดอกกุหลาบ, ELU Coin, ตั๋ว 1:1)</p>
+                    <div class="min-w-0 leading-tight">
+                        <h1 class="font-serif-title italic font-bold text-rosepink-500 text-lg sm:text-2xl tracking-tight whitespace-nowrap">Love Roulette</h1>
+                        <p class="text-[11px] sm:text-xs text-cream-500 whitespace-nowrap">คลังดอกกุหลาบ 🌹</p>
                     </div>
                 </div>
 
@@ -447,10 +443,10 @@
                     </div>
 
                     <!-- Inventory Summary Cards Grid -->
-                    <!-- มือถือ: 2x2 การ์ดแนวตั้ง / จอใหญ่: การ์ดแนวนอน -->
+                    <!-- การ์ดแนวตั้ง: ไอคอน+ชื่อด้านบน, จำนวนด้านล่างขวา (มือถือ 2x2 / จอใหญ่ 4 ช่อง) -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <div v-for="item in inventoryItems" :key="item.id"
-                             class="bg-white/90 p-3.5 sm:p-5 rounded-2xl border border-cream-300 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+                             class="bg-white/90 p-3.5 sm:p-5 rounded-2xl border border-cream-300 shadow-xs flex flex-col justify-between gap-2 sm:gap-3">
                             <div class="flex items-center gap-2.5 sm:gap-3">
                                 <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center text-xl sm:text-2xl shadow-xs border"
                                      :class="item.id === 'rose' ? 'bg-rosepink-100 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-200 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-100 border-amber-200' : 'bg-indigo-100 border-indigo-200'">
@@ -461,7 +457,7 @@
                                     <span class="text-[10px] sm:text-[11px] text-gray-400 block">{{ item.englishName }}</span>
                                 </div>
                             </div>
-                            <div class="self-end sm:self-auto text-right">
+                            <div class="self-end text-right">
                                 <span class="text-2xl sm:text-3xl font-extrabold font-serif-title"
                                       :class="item.id === 'rose' ? 'text-rosepink-600' : item.id === 'rose_received' ? 'text-rosepink-700' : item.id === 'elu_coin' ? 'text-amber-600' : 'text-indigo-600'">
                                     {{ item.id === 'rose_received' ? totalRosesReceived : item.count }}
