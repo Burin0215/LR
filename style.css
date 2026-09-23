@@ -1,12 +1,12 @@
 :root {
-  --bg: #fdf4f6;
+  --bg: #faf6f0;
   --card: #ffffff;
-  --text: #3a1f2b;
-  --muted: #8a6b78;
-  --rose: #c2185b;
-  --rose-dark: #9c0f47;
+  --text: #4a3e3d;
+  --muted: #ab886d;
+  --rose: #e04d70;
+  --rose-dark: #c22b52;
   --leaf: #2e7d32;
-  --border: #f1d3dd;
+  --border: #f4ece1;
   --error: #c62828;
 }
 
@@ -15,7 +15,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Sarabun", "Segoe UI", system-ui, sans-serif;
+  font-family: "Prompt", "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
@@ -39,7 +39,7 @@ body {
 
 .brand { text-align: center; margin-bottom: 24px; }
 .brand .logo { font-size: 48px; line-height: 1; }
-.brand h1 { margin: 8px 0 4px; font-size: 24px; color: var(--rose); }
+.brand h1 { margin: 8px 0 4px; font-size: 28px; font-family: "Playfair Display", serif; font-style: italic; color: var(--rose); }
 .brand p { margin: 0; color: var(--muted); font-size: 14px; }
 
 label { display: block; font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
