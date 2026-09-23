@@ -41,8 +41,3 @@ function currentSession() {
     return null;
   }
 }
-
-function logout() {
-  sessionStorage.removeItem(SESSION_KEY);
-  location.href = "index.html";
-}
