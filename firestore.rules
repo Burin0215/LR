@@ -81,6 +81,33 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // โปรไฟล์: ทุกคนอ่านได้ / เขียนได้เมื่อมีใบอนุญาต profileEdits ที่สร้างในชุดเดียวกัน
+    match /profiles/{u} {
+      allow read: if true;
+      allow create, update: if u.matches('[a-z]+')
+                    && request.resource.data.keys().hasOnly(['photos', 'bio', 'tags', 'prompts', 'mbti', 'zodiac', 'theme', 'updatedAt', 'edit'])
+                    && request.resource.data.photos is list && request.resource.data.photos.size() <= 3
+                    && request.resource.data.bio is string && request.resource.data.bio.size() <= 150
+                    && request.resource.data.tags is list && request.resource.data.tags.size() <= 8
+                    && request.resource.data.prompts is list && request.resource.data.prompts.size() <= 3
+                    && request.resource.data.mbti is string && request.resource.data.zodiac is string
+                    && request.resource.data.theme is string && request.resource.data.updatedAt is number
+                    && request.resource.data.edit is string
+                    && !exists(/databases/$(database)/documents/profileEdits/$(request.resource.data.edit))
+                    && getAfter(/databases/$(database)/documents/profileEdits/$(request.resource.data.edit)).data.user == u;
+      allow delete: if false;
+    }
+
+    // ใบอนุญาตแก้โปรไฟล์: by ต้องเป็น key PIN ที่ยังใช้ได้ของเจ้าของ หรือของ Admin
+    match /profileEdits/{e} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly(['user', 'by'])
+                    && request.resource.data.user is string
+                    && request.resource.data.by is string
+                    && canAuthorize(request.resource.data.by, request.resource.data.user);
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

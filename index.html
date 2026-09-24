@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="auth.js"></script>
+    <script src="profile.js"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -444,7 +445,7 @@
             </section>
 
             <!-- GUEST / HOME VIEW: Inventory Summary & List displayed immediately when not logged in -->
-            <section v-if="!isAdmin" class="w-full">
+            <section v-if="!isAdmin && currentTab !== 'profiles'" class="w-full">
                 <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-4 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                         <div>
@@ -598,6 +599,60 @@
                     </div>
                 </div>
             </section>
+            <!-- PROFILES TAB (Member + Admin): โปรไฟล์ของฉัน + ทุกคน -->
+            <section v-if="currentIdentity && currentTab === 'profiles'" class="space-y-5">
+                <div v-if="profilesError" class="bg-rosepink-50 border border-rosepink-200 text-rosepink-700 rounded-2xl px-4 py-2.5 text-xs">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ profilesError }}
+                </div>
+
+                <!-- My profile -->
+                <div class="bg-white rounded-3xl border border-cream-200 soft-card-shadow p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div class="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden flex items-center justify-center text-4xl border"
+                         :style="{ background: themeOf(currentIdentity.id).bg, borderColor: themeOf(currentIdentity.id).accent + '55' }">
+                        <img v-if="profilePhoto(currentIdentity.id)" :src="profilePhoto(currentIdentity.id)" alt="" class="w-full h-full object-cover">
+                        <span v-else>{{ currentIdentity.avatar }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-gray-400">โปรไฟล์ของฉัน</div>
+                        <div class="text-xl font-bold text-gray-800 font-serif-title">{{ currentIdentity.name }}</div>
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ profileOf(currentIdentity.id).bio || 'ยังไม่ได้เขียนแนะนำตัว — เพิ่มรูปและแท็กให้คนอื่นรู้จักคุณมากขึ้น' }}</p>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button @click="openProfileView(currentIdentity.id)" class="flex-1 sm:flex-none px-3.5 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-eye"></i> ดูแบบที่คนอื่นเห็น
+                        </button>
+                        <button @click="openProfileEdit()" class="flex-1 sm:flex-none px-3.5 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-pen"></i> แก้ไขโปรไฟล์
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Everyone else -->
+                <div>
+                    <h3 class="text-base font-bold text-gray-800 font-serif-title mb-3 px-1">ทำความรู้จักทุกคน</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <button v-for="person in identities.filter(i => i.id !== currentIdentity.id)" :key="person.id" @click="openProfileView(person.id)"
+                                class="bg-white rounded-2xl border border-cream-200 soft-card-shadow soft-card-glow overflow-hidden text-left">
+                            <div class="aspect-[4/5] flex items-center justify-center text-5xl relative" :style="{ background: themeOf(person.id).bg }">
+                                <img v-if="profilePhoto(person.id)" :src="profilePhoto(person.id)" alt="" class="absolute inset-0 w-full h-full object-cover">
+                                <span v-else>{{ person.avatar }}</span>
+                                <span v-if="person.role === 'admin'" class="absolute top-2 right-2 text-[10px] font-bold bg-white/90 text-rosepink-600 px-2 py-0.5 rounded-full">👑 Admin</span>
+                            </div>
+                            <div class="p-3">
+                                <div class="font-bold text-sm text-gray-800 truncate">{{ person.name }}
+                                    <span v-if="profileOf(person.id).mbti" class="text-[11px] font-normal text-gray-400">· {{ profileOf(person.id).mbti }}</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1 mt-1.5 min-h-[20px]">
+                                    <span v-for="tag in profileOf(person.id).tags.slice(0, 2)" :key="tag" class="text-[10px] px-2 py-0.5 rounded-full"
+                                          :style="{ background: themeOf(person.id).bg, color: themeOf(person.id).text }">{{ tag }}</span>
+                                    <span v-if="profileOf(person.id).tags.length > 2" class="text-[10px] text-gray-400 px-1 py-0.5">+{{ profileOf(person.id).tags.length - 2 }}</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
         </main>
 
         <!-- Identity Selection Modal -->
@@ -819,6 +874,182 @@
                     เข้าใจแล้ว
                 </button>
             </div>
+        </div>
+
+        <!-- Profile View Modal (สิ่งที่คนอื่นเห็น) -->
+        <div v-if="modals.profileView && viewedProfile" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs" @click.self="closeModal('profileView')">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+                <!-- Photos (แตะซ้าย/ขวาเพื่อเปลี่ยนรูป) -->
+                <div class="relative aspect-[4/5] max-h-[52vh] w-full shrink-0 flex items-center justify-center text-7xl select-none" :style="{ background: viewedProfile.theme.bg }">
+                    <img v-if="viewedProfile.photos.length" :src="viewedProfile.photos[profilePhotoIndex]" alt="" class="absolute inset-0 w-full h-full object-cover">
+                    <span v-else>{{ viewedProfile.person.avatar }}</span>
+                    <div v-if="viewedProfile.photos.length > 1" class="absolute top-2 left-3 right-12 flex gap-1">
+                        <span v-for="(p, i) in viewedProfile.photos" :key="i" class="h-1 flex-1 rounded-full" :class="i === profilePhotoIndex ? 'bg-white' : 'bg-white/45'"></span>
+                    </div>
+                    <button v-if="viewedProfile.photos.length > 1" @click="profilePhotoIndex = (profilePhotoIndex + viewedProfile.photos.length - 1) % viewedProfile.photos.length" class="absolute left-0 top-0 bottom-0 w-1/3" aria-label="รูปก่อนหน้า"></button>
+                    <button v-if="viewedProfile.photos.length > 1" @click="profilePhotoIndex = (profilePhotoIndex + 1) % viewedProfile.photos.length" class="absolute right-0 top-0 bottom-0 w-1/3" aria-label="รูปถัดไป"></button>
+                    <button @click="closeModal('profileView')" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/35 text-white text-sm flex items-center justify-center" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+                    <span class="absolute bottom-3 left-3 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/90" :style="{ color: viewedProfile.theme.text }">
+                        {{ viewedProfile.person.role === 'admin' ? '👑 Admin' : 'Member' }}
+                    </span>
+                </div>
+
+                <div class="p-5 space-y-4 overflow-y-auto">
+                    <div>
+                        <div class="text-2xl font-bold text-gray-800 font-serif-title">{{ viewedProfile.person.name }}</div>
+                        <div v-if="viewedProfile.mbti || viewedProfile.zodiac" class="text-xs text-gray-500 mt-0.5">
+                            {{ [viewedProfile.mbti, viewedProfile.zodiac].filter(Boolean).join(' · ') }}
+                        </div>
+                        <p v-if="viewedProfile.bio" class="text-sm text-gray-600 mt-2 whitespace-pre-wrap break-words">{{ viewedProfile.bio }}</p>
+                        <p v-else class="text-xs text-gray-400 mt-2">ยังไม่ได้เขียนแนะนำตัว</p>
+                    </div>
+
+                    <div v-if="viewedProfile.tags.length">
+                        <div class="text-[11px] text-gray-400 mb-1.5">ไลฟ์สไตล์</div>
+                        <div class="flex flex-wrap gap-1.5">
+                            <span v-for="tag in viewedProfile.tags" :key="tag" class="text-xs px-2.5 py-1 rounded-full font-medium"
+                                  :style="{ background: viewedProfile.theme.bg, color: viewedProfile.theme.text }">{{ tag }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="viewedProfile.prompts.length" class="space-y-2">
+                        <div class="text-[11px] text-gray-400">เรื่องน่ารักของฉัน</div>
+                        <div v-for="p in viewedProfile.prompts" :key="p.q" class="rounded-2xl px-3.5 py-2.5 border" :style="{ borderColor: viewedProfile.theme.bg }">
+                            <div class="text-[11px]" :style="{ color: viewedProfile.theme.text }">{{ p.q }}</div>
+                            <div class="text-sm text-gray-800 font-medium break-words">{{ p.a }}</div>
+                        </div>
+                    </div>
+
+                    <div v-if="viewedProfile.person.id !== currentIdentity.id" class="flex gap-2 pt-1">
+                        <button v-if="!isAdmin && viewedProfile.person.role !== 'admin'" @click="giftFromProfile(viewedProfile.person.id)" class="flex-1 py-2.5 bg-rosepink-50 hover:bg-rosepink-100 text-rosepink-600 border border-rosepink-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-gift"></i> มอบกุหลาบ
+                        </button>
+                    </div>
+                    <button v-else @click="closeModal('profileView'); openProfileEdit()" class="w-full py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs">
+                        <i class="fa-solid fa-pen mr-1"></i> แก้ไขโปรไฟล์
+                    </button>
+
+                    <!-- Admin moderation -->
+                    <div v-if="isAdmin && viewedProfile.person.id !== currentIdentity.id && (viewedProfile.photos.length || viewedProfile.bio || viewedProfile.prompts.length)"
+                         class="border-t border-cream-200 pt-3 space-y-2">
+                        <div class="text-[11px] font-bold text-rosepink-600">👑 จัดการเนื้อหาไม่เหมาะสม (Admin)</div>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-if="viewedProfile.photos.length" @click="adminModerate('photo')" :disabled="profileSaving" class="px-3 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs disabled:opacity-50">ลบรูปที่กำลังดู</button>
+                            <button v-if="viewedProfile.bio || viewedProfile.prompts.length" @click="adminModerate('text')" :disabled="profileSaving" class="px-3 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs disabled:opacity-50">ล้างข้อความแนะนำตัวและคำตอบ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Edit Modal -->
+        <div v-if="modals.profileEdit" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <form @submit.prevent="submitProfileEdit" class="bg-white w-full max-w-lg rounded-3xl border border-cream-200 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+                <div class="p-5 border-b border-cream-200 flex justify-between items-center shrink-0">
+                    <h3 class="text-sm font-bold text-gray-800 font-serif-title flex items-center gap-2"><i class="fa-solid fa-pen text-rosepink-500"></i> แก้ไขโปรไฟล์</h3>
+                    <button type="button" @click="closeModal('profileEdit')" class="text-gray-400 hover:text-gray-600" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="p-5 space-y-5 overflow-y-auto text-xs">
+                    <!-- Photos -->
+                    <div>
+                        <div class="font-semibold text-gray-700 mb-1.5">รูปโปรไฟล์ (สูงสุด {{ PROFILE_MAX_PHOTOS }} รูป · รูปแรกคือรูปหลัก)</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div v-for="i in PROFILE_MAX_PHOTOS" :key="i" class="aspect-[3/4] rounded-2xl overflow-hidden relative border"
+                                 :class="profileDraft.photos[i-1] ? 'border-cream-200' : 'border-dashed border-cream-400'">
+                                <template v-if="profileDraft.photos[i-1]">
+                                    <img :src="profileDraft.photos[i-1]" alt="" class="w-full h-full object-cover">
+                                    <button type="button" @click="removeDraftPhoto(i-1)" class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="ลบรูป"><i class="fa-solid fa-xmark text-xs"></i></button>
+                                    <button v-if="i > 1" type="button" @click="makeDraftPhotoMain(i-1)" class="absolute bottom-1.5 left-1.5 right-1.5 py-1 rounded-lg bg-white/90 text-[10px] font-semibold text-gray-700">ตั้งเป็นรูปหลัก</button>
+                                    <span v-else class="absolute bottom-1.5 left-1.5 text-[10px] font-bold bg-rosepink-500 text-white px-2 py-0.5 rounded-full">รูปหลัก</span>
+                                </template>
+                                <label v-else-if="i - 1 === profileDraft.photos.length" class="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 cursor-pointer hover:bg-cream-50">
+                                    <i class="fa-solid" :class="profilePhotoBusy ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
+                                    <span class="text-[10px]">{{ profilePhotoBusy ? 'กำลังย่อรูป...' : 'เพิ่มรูป' }}</span>
+                                    <input type="file" accept="image/*" class="hidden" @change="addDraftPhoto">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bio -->
+                    <label class="block">
+                        <span class="flex justify-between font-semibold text-gray-700 mb-1.5"><span>แนะนำตัวสั้น ๆ</span><span class="font-normal text-gray-400">{{ profileDraft.bio.length }}/{{ PROFILE_BIO_MAX }}</span></span>
+                        <textarea v-model="profileDraft.bio" :maxlength="PROFILE_BIO_MAX" rows="3" placeholder="ชอบกาแฟหวานน้อย เดินเล่นตอนเย็น และคุยเรื่องหนังได้ทั้งคืน"
+                                  class="w-full px-3 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-sm focus:outline-none focus:border-rosepink-400 resize-none"></textarea>
+                    </label>
+
+                    <!-- Tags -->
+                    <div>
+                        <div class="flex justify-between font-semibold text-gray-700 mb-1.5"><span>แท็กไลฟ์สไตล์</span><span class="font-normal" :class="profileDraft.tags.length >= PROFILE_MAX_TAGS ? 'text-rosepink-600' : 'text-gray-400'">เลือกแล้ว {{ profileDraft.tags.length }}/{{ PROFILE_MAX_TAGS }}</span></div>
+                        <div v-for="group in PROFILE_TAG_GROUPS" :key="group.name" class="mb-2.5">
+                            <div class="text-[11px] text-gray-400 mb-1">{{ group.name }}</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="tag in group.tags" :key="tag" type="button" @click="toggleDraftTag(tag)"
+                                        class="px-2.5 py-1 rounded-full border transition"
+                                        :class="profileDraft.tags.includes(tag) ? 'text-white border-transparent' : 'bg-white text-gray-600 border-cream-300 hover:border-rosepink-300'"
+                                        :style="profileDraft.tags.includes(tag) ? { background: PROFILE_THEMES[profileDraft.theme].accent } : {}">{{ tag }}</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prompts -->
+                    <div>
+                        <div class="font-semibold text-gray-700 mb-1.5">คำถามน่ารัก (ตอบได้ {{ PROFILE_MAX_PROMPTS }} ข้อ)</div>
+                        <div v-for="(p, idx) in profileDraft.prompts" :key="idx" class="flex gap-2 mb-2">
+                            <div class="flex-1 min-w-0 space-y-1.5">
+                                <select v-model="p.q" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                                    <option v-for="q in PROFILE_PROMPTS" :key="q" :value="q" :disabled="q !== p.q && profileDraft.prompts.some(x => x.q === q)">{{ q }}</option>
+                                </select>
+                                <input v-model="p.a" :maxlength="PROFILE_ANSWER_MAX" placeholder="คำตอบของคุณ" class="w-full px-3 py-2 bg-cream-50 border border-cream-300 rounded-xl text-sm focus:outline-none focus:border-rosepink-400">
+                            </div>
+                            <button type="button" @click="profileDraft.prompts.splice(idx, 1)" class="shrink-0 w-8 h-8 mt-0.5 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center" aria-label="ลบคำถาม"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        <button v-if="profileDraft.prompts.length < PROFILE_MAX_PROMPTS" type="button" @click="addDraftPrompt" class="px-3 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl">
+                            <i class="fa-solid fa-plus text-[10px] mr-1"></i> เพิ่มคำถาม
+                        </button>
+                    </div>
+
+                    <!-- Extras -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block">
+                            <span class="block font-semibold text-gray-700 mb-1.5">MBTI</span>
+                            <select v-model="profileDraft.mbti" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                                <option value="">— ไม่ระบุ —</option>
+                                <option v-for="m in MBTI_TYPES" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="block font-semibold text-gray-700 mb-1.5">ราศี</span>
+                            <select v-model="profileDraft.zodiac" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                                <option value="">— ไม่ระบุ —</option>
+                                <option v-for="z in ZODIACS" :key="z" :value="z">{{ z }}</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div>
+                        <div class="font-semibold text-gray-700 mb-1.5">สีธีมการ์ด</div>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="(t, key) in PROFILE_THEMES" :key="key" type="button" @click="profileDraft.theme = key"
+                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border"
+                                    :class="profileDraft.theme === key ? 'border-gray-700' : 'border-cream-300'">
+                                <span class="w-4 h-4 rounded-full" :style="{ background: t.accent }"></span>
+                                <span :style="{ color: t.text }">{{ t.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p v-if="profileEditError" class="text-rosepink-600 font-semibold">{{ profileEditError }}</p>
+                </div>
+
+                <div class="p-4 border-t border-cream-200 flex gap-2 shrink-0">
+                    <button type="button" @click="closeModal('profileEdit')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ยกเลิก</button>
+                    <button type="submit" :disabled="profileSaving || profilePhotoBusy" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
+                        {{ profileSaving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์' }}
+                    </button>
+                </div>
+            </form>
         </div>
 
         <!-- Change / Reset PIN Modal -->
@@ -1161,16 +1392,22 @@
                 const adminDeleteCustomValue = (itemId) => adminApplyCustomValue(itemId, -1);
 
                 const displayTabs = computed(() => {
+                    // แท็บโปรไฟล์แสดงเมื่อเลือกตัวตนแล้ว (ทั้ง Member และ Admin)
+                    const profileTab = currentIdentity.value
+                        ? [{ id: 'profiles', name: 'โปรไฟล์ 💕', icon: 'fa-solid fa-id-card text-rosepink-400' }]
+                        : [];
                     if (isAdmin.value) {
                         return [
                             { id: 'admin_visitors', name: 'รายชื่อ Members 👥', icon: 'fa-solid fa-users text-rosepink-400' },
                             { id: 'admin_visitor_inventory', name: selectedVisitorForAdmin.value ? `คลังของ ${selectedVisitorForAdmin.value.name} 🎒` : 'คลัง Member 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
-                            { id: 'admin_logs', name: 'ประวัติ Logs ทั้งหมด 📝', icon: 'fa-solid fa-history' }
+                            { id: 'admin_logs', name: 'ประวัติ Logs ทั้งหมด 📝', icon: 'fa-solid fa-history' },
+                            ...profileTab
                         ];
                     }
                     return [
                         { id: 'inventory', name: 'Inventory ของฉัน 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
-                        { id: 'logs', name: 'ประวัติบันทึก 📝', icon: 'fa-solid fa-history' }
+                        { id: 'logs', name: 'ประวัติบันทึก 📝', icon: 'fa-solid fa-history' },
+                        ...profileTab
                     ];
                 });
 
@@ -1351,7 +1588,9 @@
                     insufficientCoinsModal: false,
                     adminNotificationModal: false,
                     resetInventoryModal: false,
-                    pinModal: false
+                    pinModal: false,
+                    profileView: false,
+                    profileEdit: false
                 });
 
                 // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Member ทุกคนเป็น 0
@@ -1619,11 +1858,171 @@
                     }
                     f.saving = false;
                     if (err) { f.error = err; return; }
+                    // เปลี่ยน PIN ของตัวเอง → key ใน session เปลี่ยนด้วย (ใช้แก้โปรไฟล์)
+                    if (f.mode === 'self') {
+                        try { const s = await login(currentIdentity.value.name, f.newPin); if (s) session.value = s; } catch {}
+                    }
                     closeModal('pinModal');
                     triggerToast(f.mode === 'self' ? 'เปลี่ยน PIN เรียบร้อยแล้ว 🔑' : `ตั้ง PIN ใหม่ให้ ${f.targetName} เรียบร้อยแล้ว 🔑`);
                 };
 
+                // ===== โปรไฟล์ (Firestore: profiles/{id}) =====
+                const profiles = ref({});
+                const profilesError = ref('');
+                let profilesUnsubscribe = null;
+                watch(() => currentIdentity.value && currentIdentity.value.id, () => {
+                    if (profilesUnsubscribe) { profilesUnsubscribe(); profilesUnsubscribe = null; }
+                    profilesError.value = '';
+                    if (!currentIdentity.value) return;
+                    try {
+                        profilesUnsubscribe = subscribeProfiles(
+                            (map) => { profiles.value = map; },
+                            (err) => { profilesError.value = 'โหลดโปรไฟล์ไม่ได้: ' + (err && err.message ? err.message : err); });
+                    } catch (err) {
+                        profilesError.value = 'โหลดโปรไฟล์ไม่ได้: ' + (err && err.message ? err.message : err);
+                    }
+                }, { immediate: true });
+
+                const profileOf = (id) => profiles.value[id] || emptyProfile();
+                const themeOf = (id) => PROFILE_THEMES[profileOf(id).theme] || PROFILE_THEMES.rose;
+                const profilePhoto = (id) => profileOf(id).photos[0] || '';
+
+                const viewedProfileId = ref(null);
+                const profilePhotoIndex = ref(0);
+                const viewedProfile = computed(() => {
+                    const person = identities.find(i => i.id === viewedProfileId.value);
+                    if (!person) return null;
+                    return { ...profileOf(person.id), person, theme: themeOf(person.id) };
+                });
+                // รูปถูกลบระหว่างดู → กลับไปรูปแรก
+                watch(() => viewedProfile.value ? viewedProfile.value.photos.length : 0, (n) => {
+                    if (profilePhotoIndex.value >= n) profilePhotoIndex.value = 0;
+                });
+                const openProfileView = (id) => {
+                    viewedProfileId.value = id;
+                    profilePhotoIndex.value = 0;
+                    openModal('profileView');
+                };
+
+                const profileDraft = ref(emptyProfile());
+                const profileEditError = ref('');
+                const profileSaving = ref(false);
+                const profilePhotoBusy = ref(false);
+
+                const errorText = (err) => {
+                    if (err && err.code === 'permission-denied') return 'บันทึกไม่ได้ — PIN อาจถูกเปลี่ยน กรุณาออกจากระบบแล้วเข้าใหม่';
+                    return 'บันทึกไม่สำเร็จ: ' + (err && err.message ? err.message : err);
+                };
+
+                const openProfileEdit = () => {
+                    const mine = profileOf(currentIdentity.value.id);
+                    profileDraft.value = { ...emptyProfile(), ...JSON.parse(JSON.stringify(mine)) };
+                    profileEditError.value = '';
+                    openModal('profileEdit');
+                };
+                const addDraftPhoto = async (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    e.target.value = '';
+                    if (!file || profileDraft.value.photos.length >= PROFILE_MAX_PHOTOS) return;
+                    profilePhotoBusy.value = true;
+                    profileEditError.value = '';
+                    try {
+                        profileDraft.value.photos.push(await compressImage(file));
+                    } catch (err) {
+                        profileEditError.value = err && err.message ? err.message : String(err);
+                    } finally {
+                        profilePhotoBusy.value = false;
+                    }
+                };
+                const removeDraftPhoto = (i) => profileDraft.value.photos.splice(i, 1);
+                const makeDraftPhotoMain = (i) => {
+                    const [p] = profileDraft.value.photos.splice(i, 1);
+                    profileDraft.value.photos.unshift(p);
+                };
+                const toggleDraftTag = (tag) => {
+                    const tags = profileDraft.value.tags;
+                    const at = tags.indexOf(tag);
+                    if (at >= 0) tags.splice(at, 1);
+                    else if (tags.length < PROFILE_MAX_TAGS) tags.push(tag);
+                    else triggerToast(`เลือกแท็กได้สูงสุด ${PROFILE_MAX_TAGS} แท็ก`);
+                };
+                const addDraftPrompt = () => {
+                    const used = profileDraft.value.prompts.map(p => p.q);
+                    const q = PROFILE_PROMPTS.find(x => !used.includes(x));
+                    if (q) profileDraft.value.prompts.push({ q, a: '' });
+                };
+
+                const submitProfileEdit = async () => {
+                    profileEditError.value = '';
+                    if (profileDraft.value.prompts.some(p => !String(p.a || '').trim())) {
+                        profileEditError.value = 'กรอกคำตอบให้ครบ หรือลบคำถามที่ไม่ใช้';
+                        return;
+                    }
+                    if (!session.value || !session.value.key) {
+                        profileEditError.value = 'กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้ง ก่อนแก้โปรไฟล์';
+                        return;
+                    }
+                    profileSaving.value = true;
+                    try {
+                        await saveProfile(currentIdentity.value.id, session.value.key, profileDraft.value);
+                        closeModal('profileEdit');
+                        triggerToast('บันทึกโปรไฟล์เรียบร้อยแล้ว 💕');
+                    } catch (err) {
+                        profileEditError.value = errorText(err);
+                    } finally {
+                        profileSaving.value = false;
+                    }
+                };
+
+                // Admin: ลบรูปที่กำลังดู / ล้างข้อความ ของโปรไฟล์คนอื่น
+                const adminModerate = async (kind) => {
+                    const v = viewedProfile.value;
+                    if (!isAdmin.value || !v || !session.value || !session.value.key) return;
+                    const msg = kind === 'photo' ? `ลบรูปนี้ออกจากโปรไฟล์ของ ${v.person.name}?` : `ล้างข้อความแนะนำตัวและคำตอบของ ${v.person.name}?`;
+                    if (!window.confirm(msg)) return;
+                    const next = JSON.parse(JSON.stringify(profileOf(v.person.id)));
+                    if (kind === 'photo') next.photos.splice(profilePhotoIndex.value, 1);
+                    else { next.bio = ''; next.prompts = []; }
+                    profileSaving.value = true;
+                    try {
+                        await saveProfile(v.person.id, session.value.key, next);
+                        triggerToast('อัปเดตโปรไฟล์เรียบร้อยแล้ว');
+                    } catch (err) {
+                        triggerToast(errorText(err));
+                    } finally {
+                        profileSaving.value = false;
+                    }
+                };
+
+                const giftFromProfile = (id) => {
+                    closeModal('profileView');
+                    formGift.value = { recipientId: id, amount: 1 };
+                    openModal('giftModal');
+                };
+
                 return {
+                    PROFILE_MAX_PHOTOS, PROFILE_MAX_TAGS, PROFILE_MAX_PROMPTS, PROFILE_BIO_MAX, PROFILE_ANSWER_MAX,
+                    PROFILE_TAG_GROUPS, PROFILE_PROMPTS, MBTI_TYPES, ZODIACS, PROFILE_THEMES,
+                    profilesError,
+                    profileOf,
+                    themeOf,
+                    profilePhoto,
+                    viewedProfile,
+                    profilePhotoIndex,
+                    openProfileView,
+                    profileDraft,
+                    profileEditError,
+                    profileSaving,
+                    profilePhotoBusy,
+                    openProfileEdit,
+                    addDraftPhoto,
+                    removeDraftPhoto,
+                    makeDraftPhotoMain,
+                    toggleDraftTag,
+                    addDraftPrompt,
+                    submitProfileEdit,
+                    adminModerate,
+                    giftFromProfile,
                     pinForm,
                     pinFirstInput,
                     openPinModal,

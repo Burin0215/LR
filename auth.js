@@ -65,7 +65,8 @@ async function login(name, pin) {
   const ok = await verifyPin(name, pin);
   if (!ok) return null;
   const account = ACCOUNTS.find((a) => a.name === name);
-  const session = { name: account.name, role: account.role, at: Date.now() };
+  // key = หลักฐานว่ารู้ PIN (ใช้อนุญาตการแก้โปรไฟล์) เก็บใน sessionStorage ของแท็บนี้เท่านั้น
+  const session = { name: account.name, role: account.role, key: ok.key, at: Date.now() };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return session;
 }
