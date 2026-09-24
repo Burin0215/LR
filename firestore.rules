@@ -139,9 +139,11 @@ service cloud.firestore {
             && ((u == p.from && n.rose == o.rose - p.amount && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
              || (u == p.to && n.received == o.received + p.amount && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
                  && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
-        // Request 1:1: หักดอกกุหลาบที่มีอยู่ของผู้ขอ 5 ดอกพอดี อย่างอื่นไม่เปลี่ยน
-        || (p.kind == 'request' && u == p.from
-            && n.rose == o.rose - 5 && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
+        // Request 1:1: ผู้ขอเสียดอกที่ใช้ได้ 5 ดอก → ผู้ถูกขอได้ "ดอกที่ได้รับจาก Member" +5 ในชุดเดียวกัน
+        || (p.kind == 'request'
+            && ((u == p.from && n.rose == o.rose - 5 && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
+             || (u == p.to && n.received == o.received + 5 && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
+                 && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
         || (p.kind == 'spin' && u == p.user && p.prize is int && o.coin >= 20 && n.received == o.received
             && n.coin == o.coin - 20 + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'coin')
             && n.rose == o.rose + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'rose')

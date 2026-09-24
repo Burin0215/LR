@@ -209,13 +209,13 @@
                                     <!-- Quick summary of roses & coins -->
                                     <div class="flex items-center gap-2 mt-1.5 text-xs font-semibold text-gray-600 flex-wrap">
                                         <span class="bg-rosepink-50 text-rosepink-600 px-2 py-0.5 rounded-full border border-rosepink-200">
-                                            🌹 {{ getVisitorRoseCount(visitor.id) }} ดอก
+                                            🌹 ใช้ได้ {{ getVisitorRoseCount(visitor.id) }} ดอก
                                         </span>
                                         <span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-200">
                                             🪙 {{ getVisitorCoinCount(visitor.id) }} เหรียญ
                                         </span>
                                         <span class="bg-rosepink-100 text-rosepink-700 px-2 py-0.5 rounded-full border border-rosepink-200">
-                                            💌 ได้รับ {{ getVisitorReceivedRoseCount(visitor.id) }} ดอก
+                                            💌 จาก Member {{ getVisitorReceivedRoseCount(visitor.id) }} ดอก
                                         </span>
                                     </div>
                                 </div>
@@ -273,39 +273,6 @@
                     </div>
                 </div>
 
-                <!-- Received Roses Highlight Banner -->
-                <div class="bg-gradient-to-r from-rosepink-50 to-pink-50 p-4 sm:p-6 rounded-3xl border border-rosepink-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div class="flex items-center gap-3.5">
-                        <div class="w-12 h-12 rounded-2xl bg-rosepink-200 text-rosepink-600 flex items-center justify-center text-2xl shadow-xs">
-                            💌
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-gray-800 text-sm sm:text-base">ยอดดอกกุหลาบที่ได้รับจากคนอื่นทั้งหมด</h3>
-                            <span class="text-xs text-gray-500">สะสมจากการที่มีผู้อื่นส่งมอบให้แบบไม่เปิดเผยตัวตน</span>
-                        </div>
-                    </div>
-                    <div class="w-full sm:w-auto flex items-center gap-3">
-                        <span class="text-3xl font-extrabold font-serif-title text-rosepink-600">
-                            {{ getVisitorReceivedRoseCount(selectedVisitorIdForAdmin) }}
-                        </span>
-                        <span class="text-xs text-gray-500 font-medium">ดอก</span>
-                        <div class="flex items-center gap-2 flex-1 sm:flex-none justify-end">
-                            <input type="number" v-model.number="adminInputValues['rose_received']" placeholder="จำนวน"
-                                   class="w-16 sm:w-20 min-w-0 px-2 sm:px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
-                            <button @click="adminAddCustomValue('rose_received')"
-                                    class="px-3.5 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
-                                <i class="fa-solid fa-plus text-[10px]"></i>
-                                <span>Add</span>
-                            </button>
-                            <button @click="adminDeleteCustomValue('rose_received')"
-                                    class="px-3.5 py-2 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
-                                <i class="fa-solid fa-minus text-[10px]"></i>
-                                <span>Delete</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Inventory Item List for Admin to Edit Directly -->
                 <div class="space-y-3">
                     <div v-for="item in currentAdminVisitorInventory.filter(i => i.id !== 'rose_received')":key="item.id"
@@ -354,6 +321,35 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Received Roses Highlight Banner -->
+                <div class="bg-gradient-to-r from-rosepink-50 to-pink-50 p-4 sm:p-6 rounded-3xl border border-rosepink-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 rounded-2xl bg-rosepink-200 text-rosepink-600 flex items-center justify-center text-2xl shadow-xs">
+                            💌
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-sm sm:text-base">ดอกกุหลาบที่ได้รับจาก Member (ยอดรวม)</h3>
+                            <span class="text-xs text-gray-500">จาก Member มอบให้ + ถูกขอ Request 1:1 — ใช้จ่ายไม่ได้ · ถ้าจะให้ดอกกุหลาบ ใช้ช่อง "ดอกกุหลาบที่ใช้ได้" ด้านบน</span>
+                        </div>
+                    </div>
+                    <div class="w-full sm:w-auto flex items-center gap-3">
+                        <span class="text-3xl font-extrabold font-serif-title text-rosepink-600">
+                            {{ getVisitorReceivedRoseCount(selectedVisitorIdForAdmin) }}
+                        </span>
+                        <span class="text-xs text-gray-500 font-medium">ดอก</span>
+                        <div class="flex items-center gap-2 flex-1 sm:flex-none justify-end">
+                            <input type="number" v-model.number="adminInputValues['rose_received']" placeholder="แก้ยอด" title="ใช้ลดยอดที่ผิดเท่านั้น"
+                                   class="w-16 sm:w-20 min-w-0 px-2 sm:px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
+                            <button @click="adminDeleteCustomValue('rose_received')"
+                                    class="px-3.5 py-2 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
+                                <i class="fa-solid fa-minus text-[10px]"></i>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </section>
 
             <!-- ADMIN TAB 3: ALL LOGS VIEW -->
@@ -842,7 +838,7 @@
                     </div>
 
                     <div>
-                        <label class="block font-semibold text-gray-700 mb-1">จำนวนดอกกุหลาบ (ที่คุณมี: {{ currentRoseCount }} ดอก)</label>
+                        <label class="block font-semibold text-gray-700 mb-1">จำนวนดอกกุหลาบ (ใช้ได้: {{ currentRoseCount }} ดอก — จาก Admin และวงล้อ)</label>
                         <input type="number" v-model.number="formGift.amount" min="1" :max="currentRoseCount"
                                class="w-full px-3 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-bold text-rosepink-600 text-sm">
                     </div>
@@ -925,7 +921,7 @@
                         <button v-if="!isAdmin && viewedProfile.person.role !== 'admin'" @click="giftFromProfile(viewedProfile.person.id)" class="flex-1 py-2.5 bg-rosepink-50 hover:bg-rosepink-100 text-rosepink-600 border border-rosepink-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-gift"></i> มอบกุหลาบ
                         </button>
-                        <!-- Request 1:1 (Member ขอ Member) ใช้ดอกกุหลาบที่มีอยู่ 5 ดอก -->
+                        <!-- Request 1:1 (Member ขอ Member) ใช้ดอกกุหลาบที่ใช้ได้ 5 ดอก → ผู้ถูกขอได้ 5 ดอก -->
                         <button v-if="!isAdmin && viewedProfile.person.role !== 'admin'" @click="openRequestOneOnOne(viewedProfile.person.id)" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-heart"></i> Request 1:1
                         </button>
@@ -1065,7 +1061,8 @@
                     <div class="w-16 h-16 bg-rosepink-50 text-rosepink-500 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-rosepink-200">💞</div>
                     <div>
                         <h3 class="text-lg font-bold text-gray-800 font-serif-title">Request 1:1 กับ {{ requestForm.target.name }}</h3>
-                        <p class="text-xs text-gray-500 mt-1">ใช้ดอกกุหลาบที่มีอยู่ <b class="text-rosepink-600">{{ REQUEST_COST }} ดอก</b> (คุณมี {{ currentRoseCount }} ดอก)</p>
+                        <p class="text-xs text-gray-500 mt-1">ใช้ดอกกุหลาบที่ใช้ได้ <b class="text-rosepink-600">{{ REQUEST_COST }} ดอก</b> (คุณมี {{ currentRoseCount }} ดอก)</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ requestForm.target.name }} จะได้รับ {{ REQUEST_COST }} ดอกทันที</p>
                     </div>
                     <p v-if="currentRoseCount < REQUEST_COST" class="text-xs font-semibold text-rosepink-600 bg-rosepink-50 border border-rosepink-200 rounded-xl px-3 py-2">
                         ดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย {{ REQUEST_COST }} ดอก
@@ -1406,8 +1403,8 @@
                 };
 
                 const defaultInventoryItems = [
-                    { id: 'rose', name: 'ดอกกุหลาบที่มีอยู่', englishName: 'Roses in Stock', icon: '🌹', count: 0, unit: 'ดอก', description: 'ดอกกุหลาบสดที่มีอยู่ในคลังสำหรับใช้งาน' },
-                    { id: 'rose_received', name: 'ดอกกุหลาบที่ได้รับ', englishName: 'Roses Received', icon: '💌', count: 0, unit: 'ดอก', description: 'ดอกกุหลาบสะสมที่ได้รับจากผู้อื่นแบบไม่เปิดเผยตัวตน' },
+                    { id: 'rose', name: 'ดอกกุหลาบที่ใช้ได้', englishName: 'Usable Roses', icon: '🌹', count: 0, unit: 'ดอก', description: 'ได้จาก Admin และรางวัลวงล้อ — ใช้มอบให้ Member และขอ Request 1:1' },
+                    { id: 'rose_received', name: 'ดอกกุหลาบที่ได้รับจาก Member', englishName: 'From Members', icon: '💌', count: 0, unit: 'ดอก', description: 'ยอดรวมที่ Member มอบให้ และจากการถูกขอ Request 1:1 — แสดงผลรวม ใช้จ่ายไม่ได้' },
                     { id: 'elu_coin', name: 'ELU Coin', englishName: 'ELU Coin', icon: '🪙', count: 0, unit: 'เหรียญ', description: 'เหรียญสะสมพิเศษสำหรับกิจกรรม' },
                     { id: 'ticket_1to1', name: 'ตั๋ว 1:1', englishName: '1:1 Ticket', icon: '🎫', count: 0, unit: 'ใบ', description: 'ตั๋วสิทธิ์พิเศษ 1 ต่อ 1' }
                 ];
@@ -1834,8 +1831,8 @@
 
                 const getItemName = (id) => {
                     const map = {
-                        rose: '🌹 ดอกกุหลาบ',
-                        rose_received: '💌 ดอกกุหลาบที่ได้รับ',
+                        rose: '🌹 ดอกกุหลาบที่ใช้ได้',
+                        rose_received: '💌 ดอกกุหลาบจาก Member',
                         elu_coin: '🪙 ELU Coin',
                         ticket_1to1: '🎫 ตั๋ว 1:1'
                     };
@@ -2041,15 +2038,24 @@
                     const key = requireKey();
                     if (!key) return;
                     const prev = inventoryFor(me.id);
+                    const target = inventoryFor(f.target.id);
                     f.sending = true;
                     try {
+                        // ผู้ขอเสียดอกที่ใช้ได้ 5 ดอก → ผู้ถูกขอได้ "ดอกที่ได้รับจาก Member" +5 ทันที
                         const opId = await commitInventoryChange({
                             op: { kind: 'request', from: me.id, to: f.target.id }, by: key,
-                            updates: [{ user: me.id, next: { ...prev, rose: prev.rose - REQUEST_COST } }],
+                            updates: [
+                                { user: me.id, next: { ...prev, rose: prev.rose - REQUEST_COST } },
+                                { user: f.target.id, next: { ...target, received: target.received + REQUEST_COST } }
+                            ],
                             logs: [{
                                 userId: me.id, itemId: 'rose', changeType: 'remove', amount: REQUEST_COST,
                                 note: `ขอ Request 1:1 กับ ${f.target.name} 💞`,
                                 adminNote: `[Request 1:1] ${me.name} ขอ 1:1 กับ ${f.target.name}`
+                            }, {
+                                userId: f.target.id, itemId: 'rose_received', changeType: 'add', amount: REQUEST_COST,
+                                note: `${me.name} ขอ Request 1:1 กับคุณ 💞`,
+                                adminNote: `[Request 1:1] ${f.target.name} ได้รับจากคำขอของ ${me.name}`
                             }],
                             notifications: [{
                                 kind: 'request', visitorId: me.id, visitorName: `${me.name} ➔ ${f.target.name}`, visitorAvatar: me.avatar,
