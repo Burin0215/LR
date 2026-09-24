@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Love Roulette — คลังดอกกุหลาบ</title>
-    <!-- รายชื่อผู้ใช้ + ตรวจรหัส PIN (hash) -->
+    <!-- รายชื่อผู้ใช้ + ตรวจ/เปลี่ยน PIN ผ่าน Firebase (Firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="auth.js"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -123,6 +126,13 @@
                             </div>
                         </div>
                         <i class="fa-solid fa-chevron-down text-[10px] text-gray-400"></i>
+                    </button>
+
+                    <!-- Change own PIN -->
+                    <button v-if="currentIdentity" @click="openPinModal('self')"
+                            class="bg-cream-100 hover:bg-cream-200 text-gray-600 border border-cream-300 px-3 py-2.5 sm:py-2 rounded-xl transition duration-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="เปลี่ยน PIN">
+                        <i class="fa-solid fa-key"></i>
+                        <span class="hidden sm:inline">PIN</span>
                     </button>
 
                     <!-- Logout Button for Logged in Users -->
@@ -247,6 +257,11 @@
                                 class="px-3.5 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap">
                             <i class="fa-solid fa-arrow-left"></i>
                             <span>กลับรายชื่อ</span>
+                        </button>
+                        <button v-if="isAdmin" @click="openPinModal('admin')"
+                                class="px-3.5 py-2.5 bg-white hover:bg-cream-100 text-gray-700 border border-cream-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="ตั้ง PIN ใหม่ให้ Member คนนี้">
+                            <i class="fa-solid fa-key"></i>
+                            <span>ตั้ง PIN ใหม่</span>
                         </button>
                         <button v-if="isAdmin" @click="openModal('resetInventoryModal')"
                                 class="px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="รีเซ็ตคลังของ Member ทุกคน">
@@ -806,6 +821,51 @@
             </div>
         </div>
 
+        <!-- Change / Reset PIN Modal -->
+        <div v-if="modals.pinModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <form @submit.prevent="submitPinChange" class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 space-y-4">
+                <div class="text-center">
+                    <div class="w-14 h-14 bg-rosepink-50 text-rosepink-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rosepink-200 shadow-xs">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-800 font-serif-title mt-3">
+                        {{ pinForm.mode === 'self' ? 'เปลี่ยน PIN ของคุณ' : 'ตั้ง PIN ใหม่ให้ ' + pinForm.targetName }}
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ pinForm.mode === 'self' ? 'PIN ใหม่ใช้ได้ทุกเครื่องทันที PIN เดิมจะใช้ไม่ได้อีก' : 'ใช้เมื่อ Member ลืม PIN — แจ้ง PIN ใหม่ให้เจ้าตัวเป็นการส่วนตัว' }}
+                    </p>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <label class="block">
+                        <span class="block font-semibold text-gray-700 mb-1">{{ pinForm.mode === 'self' ? 'PIN เดิม' : 'PIN ของคุณ (Admin) เพื่อยืนยัน' }}</span>
+                        <input v-model="pinForm.authPin" ref="pinFirstInput" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+                               class="w-full text-center text-xl tracking-widest px-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-mono">
+                    </label>
+                    <label class="block">
+                        <span class="block font-semibold text-gray-700 mb-1">PIN ใหม่ (ตัวเลข 4 หลัก)</span>
+                        <input v-model="pinForm.newPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+                               class="w-full text-center text-xl tracking-widest px-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-mono">
+                    </label>
+                    <label class="block">
+                        <span class="block font-semibold text-gray-700 mb-1">ยืนยัน PIN ใหม่</span>
+                        <input v-model="pinForm.confirmPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+                               class="w-full text-center text-xl tracking-widest px-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-mono">
+                    </label>
+                    <p v-if="pinForm.error" class="text-rosepink-600 font-semibold text-center">{{ pinForm.error }}</p>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button type="button" @click="closeModal('pinModal')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" :disabled="pinForm.saving" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
+                        {{ pinForm.saving ? 'กำลังบันทึก...' : 'บันทึก PIN ใหม่' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <!-- Admin Reset Inventory Confirm Modal -->
         <div v-if="isAdmin && modals.resetInventoryModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
@@ -1290,7 +1350,8 @@
                     giftModal: false,
                     insufficientCoinsModal: false,
                     adminNotificationModal: false,
-                    resetInventoryModal: false
+                    resetInventoryModal: false,
+                    pinModal: false
                 });
 
                 // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Member ทุกคนเป็น 0
@@ -1464,7 +1525,13 @@
                 const verifyAdminPasscode = async () => {
                     const user = pendingIdentity.value;
                     if (!user) return;
-                    const s = await login(user.name, String(adminPinInput.value));
+                    let s;
+                    try {
+                        s = await login(user.name, String(adminPinInput.value));
+                    } catch (err) {
+                        triggerToast('เชื่อมต่อระบบไม่ได้ ลองใหม่อีกครั้ง: ' + (err && err.message ? err.message : err));
+                        return;
+                    }
                     if (s) {
                         session.value = s;
                         currentTab.value = isAdmin.value ? 'admin_visitors' : 'inventory';
@@ -1522,7 +1589,45 @@
                     return type;
                 };
 
+                // ===== เปลี่ยน PIN (ของตัวเอง) / ตั้ง PIN ใหม่ให้ Member (Admin) — เก็บใน Firestore =====
+                const pinForm = ref({ mode: 'self', targetName: '', authPin: '', newPin: '', confirmPin: '', error: '', saving: false });
+                const pinFirstInput = ref(null);
+
+                const openPinModal = (mode) => {
+                    const me = currentIdentity.value;
+                    if (!me) return;
+                    const target = mode === 'admin' ? selectedVisitorForAdmin.value : me;
+                    if (!target || (mode === 'admin' && !isAdmin.value)) return;
+                    pinForm.value = { mode, targetName: target.name, authPin: '', newPin: '', confirmPin: '', error: '', saving: false };
+                    openModal('pinModal');
+                    nextTick(() => pinFirstInput.value && pinFirstInput.value.focus());
+                };
+
+                const submitPinChange = async () => {
+                    const f = pinForm.value;
+                    f.error = '';
+                    if (!/^\d{4}$/.test(f.authPin)) { f.error = f.mode === 'self' ? 'กรอก PIN เดิม 4 หลัก' : 'กรอก PIN ของคุณ 4 หลัก'; return; }
+                    if (!/^\d{4}$/.test(f.newPin)) { f.error = 'PIN ใหม่ต้องเป็นตัวเลข 4 หลัก'; return; }
+                    if (f.newPin !== f.confirmPin) { f.error = 'ยืนยัน PIN ใหม่ไม่ตรงกัน'; return; }
+                    if (f.mode === 'self' && f.newPin === f.authPin) { f.error = 'PIN ใหม่ต้องไม่ซ้ำกับ PIN เดิม'; return; }
+                    f.saving = true;
+                    let err;
+                    try {
+                        err = await setPin(currentIdentity.value.name, f.authPin, f.targetName, f.newPin);
+                    } catch (e) {
+                        err = 'บันทึกไม่สำเร็จ: ' + (e && e.message ? e.message : e);
+                    }
+                    f.saving = false;
+                    if (err) { f.error = err; return; }
+                    closeModal('pinModal');
+                    triggerToast(f.mode === 'self' ? 'เปลี่ยน PIN เรียบร้อยแล้ว 🔑' : `ตั้ง PIN ใหม่ให้ ${f.targetName} เรียบร้อยแล้ว 🔑`);
+                };
+
                 return {
+                    pinForm,
+                    pinFirstInput,
+                    openPinModal,
+                    submitPinChange,
                     isAdmin,
                     currentTab,
                     displayTabs,

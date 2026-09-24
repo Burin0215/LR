@@ -1,0 +1,88 @@
+rules_version = '2';
+// กฎของ LR / LR-chat (ยังไม่มีระบบ login ของ Firebase — ใช้ PIN แทน)
+//
+// messages/{id} : ข้อความแชท
+// gens/{user}   : รุ่นของ PIN ปัจจุบัน + role (อ่านได้)
+// pinkeys/{key} : key = SHA-256("suankularb:<ชื่อ>:<PIN>:<gen>") — get ได้เมื่อรู้ key, list ไม่ได้
+// changes/{id}  : ใบอนุญาตเปลี่ยน PIN (อ่านไม่ได้) — by = key ของผู้อนุมัติ
+//
+// เปลี่ยน PIN ได้เมื่อ "by" เป็น key ที่ยังใช้ได้ของ (ก) เจ้าของเอง หรือ (ข) Admin
+// เปลี่ยนแล้ว gen +1 → key ของ PIN เก่าใช้ไม่ได้ทันที
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function genOf(u) {
+      return get(/databases/$(database)/documents/gens/$(u)).data;
+    }
+    // key k ยังใช้ได้ และมีสิทธิ์ตั้ง PIN ให้ u (เป็นเจ้าของเอง หรือเป็น Admin)
+    function canAuthorize(k, u) {
+      let kd = get(/databases/$(database)/documents/pinkeys/$(k)).data;
+      let g = genOf(kd.user);
+      return kd.gen == g.gen && (kd.user == u || g.role == 'admin');
+    }
+
+    match /messages/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['room', 'senderId', 'text', 'ts'])
+                    && request.resource.data.room is string
+                    && (request.resource.data.room == 'global' || request.resource.data.room.matches('dm_[a-z]+_[a-z]+'))
+                    && request.resource.data.senderId is string
+                    && request.resource.data.senderId.matches('[a-z]+')
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 500
+                    && request.resource.data.ts is number;
+      allow delete: if true;
+      allow update: if false;
+    }
+
+    match /gens/{u} {
+      allow read: if true;
+      // ตั้งค่าครั้งแรก (ทำครั้งเดียวต่อคน)
+      allow create: if u.matches('[a-z]+')
+                    && request.resource.data.keys().hasOnly(['gen', 'role', 'change'])
+                    && request.resource.data.gen == 0
+                    && request.resource.data.role in ['admin', 'member']
+                    && request.resource.data.change == 'seed';
+      // เปลี่ยน PIN: gen +1 และต้องมีใบอนุญาตในชุดเดียวกัน
+      allow update: if request.resource.data.keys().hasOnly(['gen', 'role', 'change'])
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.gen == resource.data.gen + 1
+                    && getAfter(/databases/$(database)/documents/changes/$(request.resource.data.change)).data.user == u
+                    && getAfter(/databases/$(database)/documents/changes/$(request.resource.data.change)).data.gen == request.resource.data.gen;
+      allow delete: if false;
+    }
+
+    match /changes/{c} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly(['user', 'gen', 'by'])
+                    && request.resource.data.by is string
+                    && canAuthorize(request.resource.data.by, request.resource.data.user)
+                    && request.resource.data.gen == genOf(request.resource.data.user).gen + 1;
+      allow update, delete: if false;
+    }
+
+    match /pinkeys/{k} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if k.matches('[0-9a-f]{64}')
+                    && request.resource.data.keys().hasOnly(['user', 'gen', 'change'])
+                    && getAfter(/databases/$(database)/documents/gens/$(request.resource.data.user)).data.gen == request.resource.data.gen
+                    && (
+                      // PIN เริ่มต้น: สร้างพร้อม gens ในชุดเดียวกันเท่านั้น
+                      (request.resource.data.gen == 0
+                        && request.resource.data.change == 'seed'
+                        && !exists(/databases/$(database)/documents/gens/$(request.resource.data.user)))
+                      ||
+                      // PIN ใหม่: ต้องมีใบอนุญาตที่ตรงกัน
+                      (getAfter(/databases/$(database)/documents/changes/$(request.resource.data.change)).data.user == request.resource.data.user
+                        && getAfter(/databases/$(database)/documents/changes/$(request.resource.data.change)).data.gen == request.resource.data.gen)
+                    );
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
