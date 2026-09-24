@@ -183,12 +183,22 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ผู้รับดอก (มอบให้ / ถูกขอ Request 1:1) เห็นแค่ข้อความกลาง — ไม่รู้ว่าใครส่งหรือใครขอ
+    // (ชื่อผู้ส่งอยู่ใน adminNote ซึ่งหน้าเว็บแสดงเฉพาะ Admin)
+    function anonymousToReceiver(d) {
+      let p = opAfter(d.op);
+      return !(p.kind in ['gift', 'request'])
+        || d.userId != p.to
+        || d.note == 'ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌';
+    }
+
     match /logs/{l} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly(['userId', 'itemId', 'changeType', 'amount', 'note', 'adminNote', 'timestamp', 'op'])
                     && request.resource.data.amount is int
                     && request.resource.data.timestamp is number
-                    && freshOp(request.resource.data.op);
+                    && freshOp(request.resource.data.op)
+                    && anonymousToReceiver(request.resource.data);
       allow update, delete: if false;
     }
 

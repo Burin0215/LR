@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Love Roulette — คลังดอกกุหลาบ</title>
+    <!-- รายชื่อผู้ใช้ + ตรวจ/เปลี่ยน PIN ผ่าน Firebase (Firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="profile.js"></script>
+    <script src="inventory.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: {
+                            50: '#FFFDF9',
+                            100: '#FAF6F0',
+                            200: '#F4ECE1',
+                            300: '#E8DCCF',
+                            400: '#D4C2B1',
+                            500: '#AB886D',
+                        },
+                        rosepink: {
+                            50: '#FFF0F3',
+                            100: '#FFE3E8',
+                            200: '#FCD1D7',
+                            300: '#F7A8B8',
+                            400: '#F07590',
+                            500: '#E04D70',
+                            600: '#C22B52',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [v-cloak] { display: none !important; }
+        body {
+            background-color: #FAF6F0;
+            color: #4A3E3D;
+            font-family: 'Prompt', sans-serif;
+        }
+        .font-serif-title { font-family: 'Playfair Display', 'Prompt', serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #FAF6F0; }
+        ::-webkit-scrollbar-thumb { background: #FCD1D7; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #E04D70; }
+        .soft-card-shadow { box-shadow: 0 10px 30px -5px rgba(224, 77, 112, 0.07), 0 4px 12px -2px rgba(171, 136, 109, 0.05); }
+        .soft-card-glow { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .soft-card-glow:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -4px rgba(240, 117, 144, 0.12); }
+        .no-scrollbar { scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }    </style>
+</head>
+<body class="h-full min-h-screen flex flex-col antialiased">
+    <div id="app" class="flex-1 flex flex-col min-h-screen pb-12" v-cloak>
+        
+        <header class="bg-cream-50/90 backdrop-blur-md sticky top-0 z-30 border-b border-cream-200">
+            <!-- มือถือ: แถวบน = โลโก้ + ตัวตน, แถวล่าง = ปุ่ม action เต็มความกว้าง / Desktop: แถวเดียว -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-0 lg:h-[4.5rem] flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-4 gap-y-2.5">
+                <!-- App Title: โลโก้ + ชื่อระบบ / คำอธิบายสั้นบรรทัดล่าง (เหมือนกันทุกขนาดจอ) -->
+                <div class="order-1 flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-rosepink-200 to-rosepink-100 flex items-center justify-center shadow-xs border border-rosepink-200">
+                        <span class="text-lg sm:text-xl">🌹</span>
+                    </div>
+                    <div class="min-w-0 leading-tight">
+                        <h1 class="font-serif-title italic font-bold text-rosepink-500 text-lg sm:text-2xl tracking-tight whitespace-nowrap">Love Roulette</h1>
+                        <p class="text-[11px] sm:text-xs text-cream-500 whitespace-nowrap">คลังดอกกุหลาบ 🌹</p>
+                    </div>
+                </div>
+
+                <!-- Global Action Buttons -->
+                <div class="order-3 lg:order-2 w-full lg:w-auto flex items-center gap-2 lg:ml-auto">
+                    <!-- Admin Notification Bell Badge Button -->
+                    <button v-if="isAdmin" @click="openModal('adminNotificationModal')"
+                            class="relative shrink-0 bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 p-2.5 rounded-xl transition duration-200 flex items-center justify-center active:scale-95 shadow-xs" title="แจ้งเตือน Admin">
+                        <i class="fa-solid fa-bell text-rosepink-500 text-base"></i>
+                        <span v-if="unreadAdminNotificationsCount > 0" class="absolute -top-1.5 -right-1.5 bg-rosepink-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                            {{ unreadAdminNotificationsCount }}
+                        </span>
+                    </button>
+
+                    <button @click="openRouletteModal"
+                            class="flex-1 lg:flex-none justify-center bg-gradient-to-r from-rosepink-500 to-rosepink-600 hover:from-rosepink-600 hover:to-rosepink-700 text-white font-bold px-3.5 py-2.5 lg:py-2 rounded-xl transition duration-200 flex items-center gap-2 active:scale-95 shadow-md border border-rosepink-300 whitespace-nowrap">
+                        <i class="fa-solid fa-dharmachakra"></i>
+                        <span class="text-xs sm:text-sm">Love Roulette 🎡</span>
+                    </button>
+                </div>
+
+                <!-- Identity + Logout -->
+                <div class="order-2 lg:order-3 flex items-center gap-2 shrink-0">
+                    <!-- กลับหน้าหลัก (Timeline / Community / Profile) -->
+                    <a href="index.html"
+                       class="bg-cream-100 hover:bg-cream-200 text-gray-600 border border-cream-300 px-3 py-2.5 sm:py-2 rounded-xl transition duration-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="กลับหน้าหลัก">
+                        <i class="fa-solid fa-house"></i>
+                        <span class="hidden xl:inline">หน้าหลัก</span>
+                    </a>
+                    <!-- Member Identity Selection Button -->
+                    <button @click="openModal('identityModal')"
+                            class="bg-cream-100 hover:bg-cream-200 text-gray-700 border border-cream-300 px-2.5 sm:px-3.5 py-2 rounded-xl transition duration-200 flex items-center gap-2 sm:gap-2.5 active:scale-95 shadow-xs">
+                        <span class="text-lg sm:text-xl">{{ currentIdentity ? currentIdentity.avatar : '👤' }}</span>
+                        <div class="text-left">
+                            <div class="text-[10px] text-gray-400 font-normal leading-none hidden sm:block">ตัวตนของคุณ</div>
+                            <div class="font-bold text-xs leading-tight whitespace-nowrap" :class="isAdmin ? 'text-rosepink-600' : 'text-gray-700'">
+                                {{ currentIdentity ? currentIdentity.name : 'เลือกตัวตน' }}<span v-if="currentIdentity" class="hidden sm:inline"> ({{ isAdmin ? 'Admin' : 'Member' }})</span>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-400"></i>
+                    </button>
+
+                    <!-- Change own PIN -->
+                    <button v-if="currentIdentity" @click="openPinModal('self')"
+                            class="bg-cream-100 hover:bg-cream-200 text-gray-600 border border-cream-300 px-3 py-2.5 sm:py-2 rounded-xl transition duration-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="เปลี่ยน PIN">
+                        <i class="fa-solid fa-key"></i>
+                        <span class="hidden sm:inline">PIN</span>
+                    </button>
+
+                    <!-- Logout Button for Logged in Users -->
+                    <button v-if="currentIdentity" @click="logoutAdmin"
+                            class="bg-rosepink-50 hover:bg-rosepink-100 text-rosepink-600 border border-rosepink-200 px-3 py-2.5 sm:py-2 rounded-xl transition duration-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="ออกจากระบบ">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="hidden sm:inline">ออก</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-cream-200/60 overflow-x-auto no-scrollbar">
+                <nav class="flex space-x-6 sm:space-x-8">
+                    <button v-for="tab in displayTabs" :key="tab.id"
+                            @click="switchTab(tab.id)"
+                            :class="[
+                                currentTab === tab.id 
+                                    ? 'border-rosepink-500 text-rosepink-600 font-semibold' 
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-cream-300',
+                                'py-3 px-1 border-b-2 text-xs sm:text-sm whitespace-nowrap transition duration-200 flex items-center gap-2'
+                            ]">
+                        <i :class="tab.icon"></i>
+                        <span>{{ tab.name }}</span>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex-1 w-full space-y-6">
+            
+            <!-- Toast Notification Popup -->
+            <transition name="fade">
+                <div v-if="toast.show" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 bg-gray-800 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-gray-700 text-xs sm:text-sm">
+                    <i class="fa-solid fa-circle-check text-rosepink-400 text-base"></i>
+                    <span>{{ toast.message }}</span>
+                </div>
+            </transition>
+
+            <!-- ADMIN TAB 1: VISITOR LIST VIEW -->
+            <section v-if="currentIdentity && isAdmin && currentTab === 'admin_visitors'" class="space-y-6">
+                <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-4 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                        <div>
+                            <span class="text-xs font-bold text-rosepink-600 uppercase tracking-wider bg-rosepink-50 px-2.5 py-1 rounded-full border border-rosepink-200">
+                                👑 Admin Control Center
+                            </span>
+                            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title mt-2">
+                                จัดการและตรวจสอบ Inventory ของ Member แต่ละคน
+                            </h2>
+                            <p class="text-xs text-gray-500 mt-1">คลิกที่การ์ด Member ด้านล่างเพื่อเข้าสู่หน้าคลังสิ่งของของคนนั้นได้ทันที</p>
+                        </div>
+                        <button @click="openModal('resetInventoryModal')"
+                                class="w-full sm:w-auto justify-center px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap shadow-xs" title="รีเซ็ตคลังของ Member ทุกคน">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Reset คลังทุกคน</span>
+                        </button>
+                    </div>
+
+                    <!-- Members Grid Cards for Admin -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                        <div v-for="visitor in visitorIdentities" :key="visitor.id"
+                             @click="viewVisitorInventory(visitor)"
+                             class="bg-white/90 hover:bg-white p-5 rounded-2xl border border-cream-300 shadow-xs cursor-pointer soft-card-glow flex items-center justify-between gap-3 group transition">
+                            <div class="flex items-center gap-3.5 pointer-events-none">
+                                <div class="w-12 h-12 rounded-xl bg-rosepink-100 border border-rosepink-200 flex items-center justify-center text-2xl shrink-0 shadow-xs">
+                                    {{ visitor.avatar }}
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-800 text-base group-hover:text-rosepink-600 transition">{{ visitor.name }}</h4>
+                                    <span class="text-[11px] text-gray-400 block">{{ visitor.description }}</span>
+                                    <!-- Quick summary of roses & coins -->
+                                    <div class="flex items-center gap-2 mt-1.5 text-xs font-semibold text-gray-600 flex-wrap">
+                                        <span class="bg-rosepink-50 text-rosepink-600 px-2 py-0.5 rounded-full border border-rosepink-200">
+                                            🌹 ใช้ได้ {{ getVisitorRoseCount(visitor.id) }} ดอก
+                                        </span>
+                                        <span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-200">
+                                            🪙 {{ getVisitorCoinCount(visitor.id) }} เหรียญ
+                                        </span>
+                                        <span class="bg-rosepink-100 text-rosepink-700 px-2 py-0.5 rounded-full border border-rosepink-200">
+                                            💌 จาก Member {{ getVisitorReceivedRoseCount(visitor.id) }} ดอก
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-cream-100 group-hover:bg-rosepink-500 group-hover:text-white flex items-center justify-center text-gray-400 transition shrink-0 pointer-events-none">
+                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ADMIN TAB 2: FULL INVENTORY VIEW OF SELECTED VISITOR -->
+            <section v-if="currentIdentity && isAdmin && currentTab === 'admin_visitor_inventory'" class="space-y-6">
+                <!-- Header Card with Switcher Dropdown -->
+                <div class="bg-white p-4 sm:p-8 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-rosepink-100 border border-rosepink-200 flex items-center justify-center text-2xl sm:text-3xl shadow-sm">
+                            {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.avatar : '👤' }}
+                        </div>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title">
+                                    คลังของ: {{ selectedVisitorForAdmin ? selectedVisitorForAdmin.name : 'Member' }}
+                                </h2>
+                                <span class="bg-rosepink-50 text-rosepink-600 border border-rosepink-200 text-xs px-2.5 py-0.5 rounded-full font-semibold">Member Inventory</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Admin สามารถเพิ่ม-ลด หรือปรับแต่งจำนวนของในคลังได้โดยตรง</p>
+                        </div>
+                    </div>
+
+                    <!-- Switch visitor selector & Back button -->
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
+                        <select v-model="selectedVisitorIdForAdmin" @change="onAdminVisitorChange"
+                                class="flex-1 basis-full sm:basis-auto md:flex-none px-3.5 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-rosepink-400">
+                            <option v-for="visitor in visitorIdentities" :key="visitor.id" :value="visitor.id">
+                                {{ visitor.avatar }} {{ visitor.name }}
+                            </option>
+                        </select>
+                        <button @click="currentTab = 'admin_visitors'"
+                                class="px-3.5 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>กลับรายชื่อ</span>
+                        </button>
+                        <button v-if="isAdmin" @click="openPinModal('admin')"
+                                class="px-3.5 py-2.5 bg-white hover:bg-cream-100 text-gray-700 border border-cream-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="ตั้ง PIN ใหม่ให้ Member คนนี้">
+                            <i class="fa-solid fa-key"></i>
+                            <span>ตั้ง PIN ใหม่</span>
+                        </button>
+                        <button v-if="isAdmin" @click="openModal('resetInventoryModal')"
+                                class="px-3.5 py-2.5 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-semibold rounded-xl text-xs transition flex items-center gap-1.5 whitespace-nowrap" title="รีเซ็ตคลังของ Member ทุกคน">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Reset คลังทุกคน</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Inventory Item List for Admin to Edit Directly -->
+                <div class="space-y-3">
+                    <div v-for="item in currentAdminVisitorInventory.filter(i => i.id !== 'rose_received')":key="item.id"
+                         class="bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 soft-card-glow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 border"
+                                 :class="item.id === 'rose' ? 'bg-rosepink-100 text-rosepink-500 border-rosepink-200' : item.id === 'elu_coin' ? 'bg-amber-100 text-amber-500 border-amber-200' : 'bg-indigo-100 text-indigo-500 border-indigo-200'">
+                                {{ item.icon }}
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <h4 class="font-bold text-gray-800 text-base sm:text-lg">{{ item.name }}</h4>
+                                    <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
+                                          :class="item.id === 'rose' ? 'bg-rosepink-50 text-rosepink-600 border-rosepink-200' : item.id === 'elu_coin' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'">
+                                        {{ item.englishName }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">{{ item.description }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Quantity and Adjust Controls with custom number input and Add button -->
+                        <div class="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-3 sm:pt-0 border-t border-cream-100 sm:border-0">
+                            <div class="text-right">
+                                <span class="text-3xl font-extrabold font-serif-title"
+                                      :class="item.id === 'rose' ? 'text-rosepink-600' : item.id === 'elu_coin' ? 'text-amber-600' : 'text-indigo-600'">
+                                    {{ item.count }}
+                                </span>
+                                <span class="text-xs text-gray-500 font-medium ml-1.5">{{ item.unit }}</span>
+                            </div>
+
+                            <div class="flex items-center gap-2 flex-1 sm:flex-none justify-end">
+                                <input type="number" v-model.number="adminInputValues[item.id]" placeholder="จำนวน"
+                                       class="w-16 sm:w-20 min-w-0 px-2 sm:px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
+                                <button @click="adminAddCustomValue(item.id)"
+                                        class="px-3.5 py-2 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
+                                    <i class="fa-solid fa-plus text-[10px]"></i>
+                                    <span>Add</span>
+                                </button>
+                                <button @click="adminDeleteCustomValue(item.id)"
+                                        class="px-3.5 py-2 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
+                                    <i class="fa-solid fa-minus text-[10px]"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Received Roses Highlight Banner -->
+                <div class="bg-gradient-to-r from-rosepink-50 to-pink-50 p-4 sm:p-6 rounded-3xl border border-rosepink-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 rounded-2xl bg-rosepink-200 text-rosepink-600 flex items-center justify-center text-2xl shadow-xs">
+                            💌
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-sm sm:text-base">ดอกกุหลาบที่ได้รับจาก Member (ยอดรวม)</h3>
+                            <span class="text-xs text-gray-500">จาก Member มอบให้ + ถูกขอ Request 1:1 — ใช้จ่ายไม่ได้ · ถ้าจะให้ดอกกุหลาบ ใช้ช่อง "ดอกกุหลาบที่ใช้ได้" ด้านบน</span>
+                        </div>
+                    </div>
+                    <div class="w-full sm:w-auto flex items-center gap-3">
+                        <span class="text-3xl font-extrabold font-serif-title text-rosepink-600">
+                            {{ getVisitorReceivedRoseCount(selectedVisitorIdForAdmin) }}
+                        </span>
+                        <span class="text-xs text-gray-500 font-medium">ดอก</span>
+                        <div class="flex items-center gap-2 flex-1 sm:flex-none justify-end">
+                            <input type="number" v-model.number="adminInputValues['rose_received']" placeholder="แก้ยอด" title="ใช้ลดยอดที่ผิดเท่านั้น"
+                                   class="w-16 sm:w-20 min-w-0 px-2 sm:px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs font-bold text-center focus:outline-none focus:border-rosepink-400">
+                            <button @click="adminDeleteCustomValue('rose_received')"
+                                    class="px-3.5 py-2 bg-white hover:bg-rosepink-50 text-rosepink-600 border border-rosepink-300 font-bold rounded-xl text-xs shadow-xs transition active:scale-95 flex items-center gap-1">
+                                <i class="fa-solid fa-minus text-[10px]"></i>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ADMIN TAB 3: ALL LOGS VIEW -->
+            <section v-if="currentIdentity && isAdmin && currentTab === 'admin_logs'" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">ประวัติ Logs {{ adminLogsFilter === 'all' ? 'ทั้งหมดในระบบ' : 'ของ Member: ' + getIdentityName(adminLogsFilter) }} 📝</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">ตรวจสอบบันทึกความเคลื่อนไหว (แสดงชื่อผู้มอบดอกกุหลาบสำหรับ Admin)</p>
+                    </div>
+                    <select v-model="adminLogsFilter"
+                            class="px-3.5 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-rosepink-400">
+                        <option value="all">👥 ทุกคน</option>
+                        <option v-for="visitor in visitorIdentities" :key="visitor.id" :value="visitor.id">
+                            {{ visitor.avatar }} {{ visitor.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-cream-200 overflow-hidden soft-card-shadow">
+                    <div class="overflow-x-auto">
+                        <table class="hidden sm:table w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-cream-100/70 border-b border-cream-200 text-cream-500 font-semibold uppercase tracking-wider text-[11px]">
+                                    <th class="py-3.5 px-6">วันที่ & เวลา</th>
+                                    <th class="py-3.5 px-6">ผู้ใช้</th>
+                                    <th class="py-3.5 px-6">รายการ</th>
+                                    <th class="py-3.5 px-6 text-center">ประเภท</th>
+                                    <th class="py-3.5 px-6 text-center">จำนวน</th>
+                                    <th class="py-3.5 px-6">หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-cream-100">
+                                <tr v-for="log in adminFilteredLogs" :key="log.id" class="hover:bg-rosepink-50/30 transition">
+                                    <td class="py-4 px-6 text-gray-600 font-medium whitespace-nowrap">
+                                        <i class="fa-regular fa-clock text-rosepink-400 mr-1.5"></i>
+                                        {{ formatDate(log.timestamp) }}
+                                    </td>
+                                    <td class="py-4 px-6 font-semibold text-gray-700 whitespace-nowrap">
+                                        {{ getIdentityName(log.userId) }}
+                                    </td>
+                                    <td class="py-4 px-6 font-semibold text-gray-800 whitespace-nowrap">
+                                        {{ getItemName(log.itemId) }}
+                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <span :class="[
+                                            log.changeType === 'add' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                            log.changeType === 'remove' ? 'bg-rosepink-50 text-rosepink-700 border-rosepink-200' : 'bg-cream-100 text-cream-500 border-cream-200',
+                                            'px-2.5 py-1 rounded-full text-[10px] font-semibold border'
+                                        ]">
+                                            {{ getChangeTypeLabel(log.changeType) }}
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-6 text-center font-bold text-sm" :class="log.changeType === 'add' ? 'text-emerald-600' : 'text-rosepink-600'">
+                                        {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
+                                    </td>
+                                    <td class="py-4 px-6 text-gray-500">
+                                        {{ log.adminNote || log.note || '-' }}
+                                    </td>
+                                </tr>
+                                <tr v-if="adminFilteredLogs.length === 0">
+                                    <td colspan="6" class="py-12 text-center text-gray-400">
+                                        ยังไม่มีประวัติการบันทึกข้อมูลในระบบ
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- มือถือ: แสดงเป็นการ์ดแทนตาราง -->
+                        <div class="sm:hidden divide-y divide-cream-100">
+                            <div v-for="log in adminFilteredLogs" :key="log.id" class="p-4 flex items-start gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="font-semibold text-gray-800 text-sm truncate">{{ getItemName(log.itemId) }}</span>
+                                        <span class="font-bold text-sm whitespace-nowrap" :class="log.changeType === 'add' ? 'text-emerald-600' : 'text-rosepink-600'">
+                                            {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">
+                                        <i class="fa-regular fa-clock text-rosepink-400 mr-1"></i>{{ formatDate(log.timestamp) }} · <span class="font-semibold text-gray-600">{{ getIdentityName(log.userId) }}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1.5">{{ log.adminNote || log.note || '-' }}</p>
+                                </div>
+                            </div>
+                            <div v-if="adminFilteredLogs.length === 0" class="py-12 text-center text-gray-400 text-xs">
+                                ยังไม่มีประวัติการบันทึกข้อมูลในระบบ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GUEST / HOME VIEW: Inventory Summary & List displayed immediately when not logged in -->
+            <section v-if="!isAdmin" class="w-full">
+                <div class="bg-gradient-to-r from-rosepink-100/90 via-cream-100 to-amber-50 p-4 sm:p-8 rounded-3xl border border-rosepink-200 soft-card-shadow relative overflow-hidden">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <span class="text-xs font-bold text-rosepink-600 uppercase tracking-wider bg-rosepink-50 px-2.5 py-1 rounded-full border border-rosepink-200">
+                                🛍️ ภาพรวม Inventory ล่าสุด {{ currentIdentity ? '(' + currentIdentity.name + ')' : '(ยังไม่ได้เลือกตัวตน - แสดงค่าเริ่มต้น)' }}
+                            </span>
+                            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 font-serif-title mt-2">
+                                รายการของที่มีอยู่ในครอบครอง
+                            </h2>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Summary Cards Grid -->
+                    <!-- การ์ดแนวตั้ง: ไอคอน+ชื่อด้านบน, จำนวนด้านล่างขวา (มือถือ 2x2 / จอใหญ่ 4 ช่อง) -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <div v-for="item in inventoryItems" :key="item.id"
+                             class="bg-white/90 p-3.5 sm:p-5 rounded-2xl border border-cream-300 shadow-xs flex flex-col justify-between gap-2 sm:gap-3">
+                            <div class="flex items-center gap-2.5 sm:gap-3">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center text-xl sm:text-2xl shadow-xs border"
+                                     :class="item.id === 'rose' ? 'bg-rosepink-100 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-200 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-100 border-amber-200' : 'bg-indigo-100 border-indigo-200'">
+                                    {{ item.icon }}
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="font-bold text-gray-800 text-xs sm:text-base leading-snug">{{ item.name }}</h4>
+                                    <span class="text-[10px] sm:text-[11px] text-gray-400 block">{{ item.englishName }}</span>
+                                </div>
+                            </div>
+                            <div class="self-end text-right">
+                                <span class="text-2xl sm:text-3xl font-extrabold font-serif-title"
+                                      :class="item.id === 'rose' ? 'text-rosepink-600' : item.id === 'rose_received' ? 'text-rosepink-700' : item.id === 'elu_coin' ? 'text-amber-600' : 'text-indigo-600'">
+                                    {{ item.id === 'rose_received' ? totalRosesReceived : item.count }}
+                                </span>
+                                <span class="text-xs text-gray-500 font-medium ml-1">{{ item.unit }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="!isAdmin && currentTab === 'inventory'" class="space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-1">
+                    <h3 class="text-base font-bold text-gray-800 font-serif-title flex items-center gap-2">
+                        <i class="fa-solid fa-bag-shopping text-rosepink-500"></i> รายการของในคลัง Inventory {{ currentIdentity ? '(' + currentIdentity.name + ')' : '' }}
+                    </h3>
+                </div>
+
+                <div class="flex flex-col space-y-3 w-full">
+                    <div v-for="item in inventoryItems" :key="item.id" 
+                         class="bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 soft-card-glow w-full">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 border"
+                                 :class="item.id === 'rose' ? 'bg-rosepink-100 text-rosepink-500 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-200 text-rosepink-700 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-100 text-amber-500 border-amber-200' : 'bg-indigo-100 text-indigo-500 border-indigo-200'">
+                                {{ item.icon }}
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <h4 class="font-bold text-gray-800 text-base sm:text-lg">{{ item.name }}</h4>
+                                    <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
+                                          :class="item.id === 'rose' ? 'bg-rosepink-50 text-rosepink-600 border-rosepink-200' : item.id === 'rose_received' ? 'bg-rosepink-100 text-rosepink-700 border-rosepink-300' : item.id === 'elu_coin' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'">
+                                        {{ item.englishName }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">{{ item.description }}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4 self-end sm:self-center">
+                            <div class="text-right">
+                                <span class="text-3xl font-extrabold font-serif-title"
+                                      :class="item.id === 'rose' ? 'text-rosepink-600' : item.id === 'rose_received' ? 'text-rosepink-700' : item.id === 'elu_coin' ? 'text-amber-600' : 'text-indigo-600'">
+                                    {{ item.id === 'rose_received' ? totalRosesReceived : item.count }}
+                                </span>
+                                <span class="text-xs text-gray-500 font-medium ml-1.5">{{ item.unit }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="!isAdmin && currentTab === 'logs'" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">บันทึกประวัติความเคลื่อนไหวของคุณ 📝</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">ติดตามย้อนหลังเฉพาะประวัติใน Inventory ของคุณเอง (ไม่เปิดเผยชื่อผู้ส่งดอกกุหลาบ)</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-cream-200 overflow-hidden soft-card-shadow">
+                    <div class="overflow-x-auto">
+                        <table class="hidden sm:table w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-cream-100/70 border-b border-cream-200 text-cream-500 font-semibold uppercase tracking-wider text-[11px]">
+                                    <th class="py-3.5 px-6">วันที่ & เวลา</th>
+                                    <th class="py-3.5 px-6">รายการ</th>
+                                    <th class="py-3.5 px-6 text-center">ประเภท</th>
+                                    <th class="py-3.5 px-6 text-center">จำนวน</th>
+                                    <th class="py-3.5 px-6">หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-cream-100">
+                                <tr v-for="log in myLogs" :key="log.id" class="hover:bg-rosepink-50/30 transition">
+                                    <td class="py-4 px-6 text-gray-600 font-medium whitespace-nowrap">
+                                        <i class="fa-regular fa-clock text-rosepink-400 mr-1.5"></i>
+                                        {{ formatDate(log.timestamp) }}
+                                    </td>
+                                    <td class="py-4 px-6 font-semibold text-gray-800 whitespace-nowrap">
+                                        {{ getItemName(log.itemId) }}
+                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <span :class="[
+                                            log.changeType === 'add' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                                            log.changeType === 'remove' ? 'bg-rosepink-50 text-rosepink-700 border-rosepink-200' : 'bg-cream-100 text-cream-500 border-cream-200',
+                                            'px-2.5 py-1 rounded-full text-[10px] font-semibold border'
+                                        ]">
+                                            {{ getChangeTypeLabel(log.changeType) }}
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-6 text-center font-bold text-sm" :class="log.changeType === 'add' ? 'text-emerald-600' : 'text-rosepink-600'">
+                                        {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
+                                    </td>
+                                    <td class="py-4 px-6 text-gray-500">
+                                        {{ log.note || '-' }}
+                                    </td>
+                                </tr>
+                                <tr v-if="myLogs.length === 0">
+                                    <td colspan="5" class="py-12 text-center text-gray-400">
+                                        ยังไม่มีประวัติการปรับนับรายการใน Inventory ของคุณ
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- มือถือ: แสดงเป็นการ์ดแทนตาราง -->
+                        <div class="sm:hidden divide-y divide-cream-100">
+                            <div v-for="log in myLogs" :key="log.id" class="p-4">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-semibold text-gray-800 text-sm truncate">{{ getItemName(log.itemId) }}</span>
+                                    <span class="font-bold text-sm whitespace-nowrap" :class="log.changeType === 'add' ? 'text-emerald-600' : 'text-rosepink-600'">
+                                        {{ log.changeType === 'add' ? '+' : '-' }}{{ log.amount }} {{ getItemUnit(log.itemId) }}
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-gray-400 mt-0.5">
+                                    <i class="fa-regular fa-clock text-rosepink-400 mr-1"></i>{{ formatDate(log.timestamp) }}
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1.5">{{ log.note || '-' }}</p>
+                            </div>
+                            <div v-if="myLogs.length === 0" class="py-12 text-center text-gray-400 text-xs">
+                                ยังไม่มีประวัติการปรับนับรายการใน Inventory ของคุณ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Identity Selection Modal -->
+        <div v-if="modals.identityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-md rounded-3xl border border-cream-200 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="p-5 bg-gradient-to-r from-rosepink-100/70 to-cream-100 border-b border-cream-200 flex justify-between items-center shrink-0">
+                    <h3 class="text-sm font-bold text-gray-800 font-serif-title flex items-center gap-2">
+                        <i class="fa-solid fa-user-gear text-rosepink-500"></i> เลือกตัวตนผู้ใช้งาน
+                    </h3>
+                    <button @click="closeModal('identityModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+                    <div>
+                        <div class="text-[11px] font-bold text-rosepink-600 uppercase tracking-wider mb-2">ผู้ดูแลระบบ (Admin)</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button v-for="user in identities.filter(i => i.role === 'admin')" :key="user.id"
+                                    @click="selectIdentity(user)"
+                                    class="p-3 rounded-2xl border text-left flex items-center gap-2.5 transition active:scale-95 hover:border-rosepink-300"
+                                    :class="selectedIdentityId === user.id ? 'bg-rosepink-50 border-rosepink-300' : 'bg-cream-50 border-cream-200'">
+                                <span class="text-xl">{{ user.avatar }}</span>
+                                <div>
+                                    <div class="font-bold text-gray-800">{{ user.name }}</div>
+                                    <div class="text-[10px] text-rosepink-600">Admin</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">สมาชิก (Members)</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button v-for="user in identities.filter(i => i.role === 'visitor')" :key="user.id"
+                                    @click="selectIdentity(user)"
+                                    class="p-3 rounded-2xl border text-left flex items-center gap-2.5 transition active:scale-95 hover:border-cream-300"
+                                    :class="selectedIdentityId === user.id ? 'bg-rosepink-50 border-rosepink-300' : 'bg-cream-50 border-cream-200'">
+                                <span class="text-xl">{{ user.avatar }}</span>
+                                <div>
+                                    <div class="font-bold text-gray-800">{{ user.name }}</div>
+                                    <div class="text-[10px] text-gray-400">Member</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-cream-50 border-t border-cream-200 flex justify-end shrink-0">
+                    <button @click="closeModal('identityModal')" class="px-4 py-2 bg-cream-200 hover:bg-cream-300 text-gray-700 font-semibold rounded-xl text-xs">
+                        ปิด
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PIN Modal -->
+        <div v-if="modals.adminAuth" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
+                <div class="w-14 h-14 bg-rosepink-50 text-rosepink-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rosepink-200 shadow-xs">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-gray-800 font-serif-title">ยืนยันรหัส PIN ตัวตน</h3>
+                    <p class="text-xs text-gray-500 mt-1">กรุณากรอกรหัส PIN ของ <span class="font-semibold text-rosepink-600">{{ pendingIdentity ? pendingIdentity.name : '' }}</span></p>
+                </div>
+
+                <div>
+                    <input type="password" v-model="adminPinInput" @keyup.enter="verifyAdminPasscode" placeholder="••••" maxlength="4" inputmode="numeric" ref="pinInput"
+                           class="w-full text-center text-2xl tracking-widest px-4 py-3 bg-cream-50 border border-cream-300 rounded-2xl focus:outline-none focus:border-rosepink-400 font-mono">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button @click="closeModal('adminAuth')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">
+                        ยกเลิก
+                    </button>
+                    <button @click="verifyAdminPasscode" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md">
+                        ยืนยัน
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Love Roulette Modal -->
+        <div v-if="modals.rouletteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-lg rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 flex flex-col items-center space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="w-full flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 font-serif-title">Love Roulette 🎡</h3>
+                        <p class="text-xs text-gray-500">หมุนวงล้อเพื่อลุ้นรับไอเทมพิเศษเข้าสู่คลัง</p>
+                    </div>
+                    <button @click="closeModal('rouletteModal')" class="text-gray-400 hover:text-gray-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Canvas Wheel Container -->
+                <div class="relative flex items-center justify-center py-2">
+                    <div class="absolute top-0 z-10 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[16px] border-t-rosepink-600 filter drop-shadow-md"></div>
+                    <canvas ref="rouletteCanvas" width="320" height="320" class="w-[280px] sm:w-[320px] max-w-full h-auto aspect-square drop-shadow-lg"></canvas>
+                </div>
+
+                <!-- ยอดเหรียญคงเหลือ (Member) -->
+                <div v-if="currentIdentity && !isAdmin" class="w-full flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-xs">
+                    <span class="text-gray-600 whitespace-nowrap">🪙 ELU Coin ของคุณ</span>
+                    <span class="text-right leading-tight">
+                        <span class="font-bold text-amber-600 whitespace-nowrap">{{ currentCoinCount }} เหรียญ</span>
+                        <span class="block text-[10px] text-gray-400 whitespace-nowrap">หมุนได้อีก {{ Math.floor(currentCoinCount / 20) }} ครั้ง</span>
+                    </span>
+                </div>
+
+                <button @click="spinWheel" :disabled="isSpinning"
+                        class="w-full py-3.5 bg-gradient-to-r from-rosepink-500 to-rosepink-600 hover:from-rosepink-600 hover:to-rosepink-700 text-white font-bold rounded-2xl shadow-md transition disabled:opacity-50 text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-dharmachakra" :class="{'fa-spin': isSpinning}"></i>
+                    <span>{{ isSpinning ? 'กำลังหมุนวงล้อ...' : (isAdmin ? 'หมุนทดสอบ (Admin ไม่ได้รับรางวัล)' : 'หมุนวงล้อเสี่ยงโชค! ✨ (ใช้ 20 ELU Coin)') }}</span>
+                </button>
+
+                <!-- Admin Roulette Customizer Section -->
+                <div v-if="isAdmin" class="w-full mt-4 pt-4 border-t border-cream-200 space-y-3">
+                    <h4 class="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-gear text-rosepink-500"></i> จัดการรายการในวงล้อ (Admin)
+                    </h4>
+
+                    <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                        <div v-for="(prize, index) in roulettePrizes" :key="index" class="flex items-center gap-2 bg-cream-50 p-2 rounded-xl border border-cream-200 text-xs">
+                            <select v-model="prize.icon" @change="saveRoulettePrizes" class="shrink-0 w-[4.5rem] sm:w-auto px-1.5 sm:px-2 py-1 bg-white border border-cream-300 rounded-lg">
+                                <option value="🌹">🌹 กุหลาบ</option>
+                                <option value="🪙">🪙 เหรียญทอง</option>
+                                <option value="🎫">🎫 ตั๋ว</option>
+                            </select>
+                            <input type="text" v-model="prize.label" @input="saveRoulettePrizes" placeholder="ชื่อรางวัล" class="flex-1 min-w-0 px-2.5 py-1 bg-white border border-cream-300 rounded-lg font-semibold">
+                            <button @click="removeRoulettePrize(index)" class="shrink-0 w-7 h-7 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center transition" title="ลบรางวัล">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add new prize form -->
+                    <div class="flex flex-wrap sm:flex-nowrap gap-2 pt-1">
+                        <select v-model="newPrizeIcon" class="shrink-0 px-2 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
+                            <option value="🌹">🌹 กุหลาบ</option>
+                            <option value="🪙">🪙 เหรียญทอง</option>
+                            <option value="🎫">🎫 ตั๋ว</option>
+                        </select>
+                        <input type="text" v-model="newPrizeLabel" @keyup.enter="addRoulettePrize" placeholder="ชื่อรางวัลใหม่ (เช่น ดอกกุหลาบ 2 ดอก)" class="flex-1 min-w-0 px-3 py-1.5 bg-cream-50 border border-cream-300 rounded-xl text-xs">
+                        <button @click="addRoulettePrize" class="px-3.5 py-1.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs">
+                            เพิ่ม
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roulette Result Modal -->
+        <div v-if="modals.rouletteResult" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
+                <div class="w-16 h-16 bg-rosepink-100 text-rosepink-600 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-rosepink-200 shadow-sm animate-bounce">
+                    {{ winnerPrize ? winnerPrize.icon : '🎁' }}
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-rosepink-600 uppercase tracking-widest bg-rosepink-50 px-3 py-1 rounded-full border border-rosepink-200">ยินดีด้วย! คุณได้รับรางวัล</span>
+                    <h3 class="text-xl font-bold text-gray-800 font-serif-title mt-3">{{ winnerPrize ? winnerPrize.label : '' }}</h3>
+                    <p class="text-xs text-gray-500 mt-1">{{ winnerPrize ? winnerPrize.description : '' }}</p>
+                </div>
+                <button @click="closeModal('rouletteResult')" class="w-full py-3 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-2xl shadow-md text-xs">
+                    รับรางวัลและปิด
+                </button>
+            </div>
+        </div>
+
+        <!-- Insufficient ELU Coins Modal -->
+        <div v-if="modals.insufficientCoinsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
+                <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-amber-200 shadow-sm">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-full border border-amber-200">ELU Coin ไม่เพียงพอ</span>
+                    <h3 class="text-xl font-bold text-gray-800 font-serif-title mt-3">เหรียญทองไม่พอหมุนวงล้อ</h3>
+                    <p class="text-xs text-gray-500 mt-1">คุณต้องการ 20 ELU Coin แต่ปัจจุบันคุณมี <span class="font-bold text-amber-600">{{ currentCoinCount }}</span> เหรียญเท่านั้น</p>
+                </div>
+                <button @click="closeModal('insufficientCoinsModal')" class="w-full py-3 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-2xl shadow-md text-xs">
+                    เข้าใจแล้ว
+                </button>
+            </div>
+        </div>
+
+        <!-- Profile Edit Modal -->
+        <div v-if="modals.profileEdit" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <form @submit.prevent="submitProfileEdit" class="bg-white w-full max-w-lg rounded-3xl border border-cream-200 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+                <div class="p-5 border-b border-cream-200 flex justify-between items-center shrink-0">
+                    <h3 class="text-sm font-bold text-gray-800 font-serif-title flex items-center gap-2"><i class="fa-solid fa-pen text-rosepink-500"></i> แก้ไขโปรไฟล์</h3>
+                    <button type="button" @click="closeModal('profileEdit')" class="text-gray-400 hover:text-gray-600" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="p-5 space-y-5 overflow-y-auto text-xs">
+                    <!-- Photos -->
+                    <div>
+                        <div class="font-semibold text-gray-700 mb-1.5">รูปโปรไฟล์ (สูงสุด {{ PROFILE_MAX_PHOTOS }} รูป · รูปแรกคือรูปหลัก)</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div v-for="i in PROFILE_MAX_PHOTOS" :key="i" class="aspect-[3/4] rounded-2xl overflow-hidden relative border"
+                                 :class="profileDraft.photos[i-1] ? 'border-cream-200' : 'border-dashed border-cream-400'">
+                                <template v-if="profileDraft.photos[i-1]">
+                                    <img :src="profileDraft.photos[i-1]" alt="" class="w-full h-full object-cover">
+                                    <button type="button" @click="removeDraftPhoto(i-1)" class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="ลบรูป"><i class="fa-solid fa-xmark text-xs"></i></button>
+                                    <button v-if="i > 1" type="button" @click="makeDraftPhotoMain(i-1)" class="absolute bottom-1.5 left-1.5 right-1.5 py-1 rounded-lg bg-white/90 text-[10px] font-semibold text-gray-700">ตั้งเป็นรูปหลัก</button>
+                                    <span v-else class="absolute bottom-1.5 left-1.5 text-[10px] font-bold bg-rosepink-500 text-white px-2 py-0.5 rounded-full">รูปหลัก</span>
+                                </template>
+                                <label v-else-if="i - 1 === profileDraft.photos.length" class="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 cursor-pointer hover:bg-cream-50">
+                                    <i class="fa-solid" :class="profilePhotoBusy ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
+                                    <span class="text-[10px]">{{ profilePhotoBusy ? 'กำลังย่อรูป...' : 'เพิ่มรูป' }}</span>
+                                    <input type="file" accept="image/*" class="hidden" @change="addDraftPhoto">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bio -->
+                    <label class="block">
+                        <span class="flex justify-between font-semibold text-gray-700 mb-1.5"><span>แนะนำตัวสั้น ๆ</span><span class="font-normal text-gray-400">{{ profileDraft.bio.length }}/{{ PROFILE_BIO_MAX }}</span></span>
+                        <textarea v-model="profileDraft.bio" :maxlength="PROFILE_BIO_MAX" rows="3" placeholder="ชอบกาแฟหวานน้อย เดินเล่นตอนเย็น และคุยเรื่องหนังได้ทั้งคืน"
+                                  class="w-full px-3 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-sm focus:outline-none focus:border-rosepink-400 resize-none"></textarea>
+                    </label>
+
+                    <!-- Tags -->
+                    <div>
+                        <div class="flex justify-between font-semibold text-gray-700 mb-1.5"><span>แท็กไลฟ์สไตล์</span><span class="font-normal" :class="profileDraft.tags.length >= PROFILE_MAX_TAGS ? 'text-rosepink-600' : 'text-gray-400'">เลือกแล้ว {{ profileDraft.tags.length }}/{{ PROFILE_MAX_TAGS }}</span></div>
+                        <div v-for="group in PROFILE_TAG_GROUPS" :key="group.name" class="mb-2.5">
+                            <div class="text-[11px] text-gray-400 mb-1">{{ group.name }}</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="tag in group.tags" :key="tag" type="button" @click="toggleDraftTag(tag)"
+                                        class="px-2.5 py-1 rounded-full border transition"
+                                        :class="profileDraft.tags.includes(tag) ? 'text-white border-transparent' : 'bg-white text-gray-600 border-cream-300 hover:border-rosepink-300'"
+                                        :style="profileDraft.tags.includes(tag) ? { background: PROFILE_THEMES[profileDraft.theme].accent } : {}">{{ tag }}</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prompts -->
+                    <div>
+                        <div class="font-semibold text-gray-700 mb-1.5">คำถามน่ารัก (ตอบได้ {{ PROFILE_MAX_PROMPTS }} ข้อ)</div>
+                        <div v-for="(p, idx) in profileDraft.prompts" :key="idx" class="flex gap-2 mb-2">
+                            <div class="flex-1 min-w-0 space-y-1.5">
+                                <select v-model="p.q" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                                    <option v-for="q in PROFILE_PROMPTS" :key="q" :value="q" :disabled="q !== p.q && profileDraft.prompts.some(x => x.q === q)">{{ q }}</option>
+                                </select>
+                                <input v-model="p.a" :maxlength="PROFILE_ANSWER_MAX" placeholder="คำตอบของคุณ" class="w-full px-3 py-2 bg-cream-50 border border-cream-300 rounded-xl text-sm focus:outline-none focus:border-rosepink-400">
+                            </div>
+                            <button type="button" @click="profileDraft.prompts.splice(idx, 1)" class="shrink-0 w-8 h-8 mt-0.5 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center" aria-label="ลบคำถาม"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        <button v-if="profileDraft.prompts.length < PROFILE_MAX_PROMPTS" type="button" @click="addDraftPrompt" class="px-3 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl">
+                            <i class="fa-solid fa-plus text-[10px] mr-1"></i> เพิ่มคำถาม
+                        </button>
+                    </div>
+
+                    <!-- Extras -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block">
+                            <span class="block font-semibold text-gray-700 mb-1.5">MBTI</span>
+                            <select v-model="profileDraft.mbti" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                                <option value="">— ไม่ระบุ —</option>
+                                <option v-for="m in MBTI_TYPES" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="block font-semibold text-gray-700 mb-1.5">ราศี</span>
+                            <select v-model="profileDraft.zodiac" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                                <option value="">— ไม่ระบุ —</option>
+                                <option v-for="z in ZODIACS" :key="z" :value="z">{{ z }}</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div>
+                        <div class="font-semibold text-gray-700 mb-1.5">สีธีมการ์ด</div>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="(t, key) in PROFILE_THEMES" :key="key" type="button" @click="profileDraft.theme = key"
+                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border"
+                                    :class="profileDraft.theme === key ? 'border-gray-700' : 'border-cream-300'">
+                                <span class="w-4 h-4 rounded-full" :style="{ background: t.accent }"></span>
+                                <span :style="{ color: t.text }">{{ t.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p v-if="profileEditError" class="text-rosepink-600 font-semibold">{{ profileEditError }}</p>
+                </div>
+
+                <div class="p-4 border-t border-cream-200 flex gap-2 shrink-0">
+                    <button type="button" @click="closeModal('profileEdit')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ยกเลิก</button>
+                    <button type="submit" :disabled="profileSaving || profilePhotoBusy" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
+                        {{ profileSaving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Change / Reset PIN Modal -->
+        <div v-if="modals.pinModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <form @submit.prevent="submitPinChange" class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 space-y-4">
+                <div class="text-center">
+                    <div class="w-14 h-14 bg-rosepink-50 text-rosepink-500 rounded-2xl flex items-center justify-center text-2xl mx-auto border border-rosepink-200 shadow-xs">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-800 font-serif-title mt-3">
+                        {{ pinForm.mode === 'self' ? 'เปลี่ยน PIN ของคุณ' : 'ตั้ง PIN ใหม่ให้ ' + pinForm.targetName }}
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ pinForm.mode === 'self' ? 'PIN ใหม่ใช้ได้ทุกเครื่องทันที PIN เดิมจะใช้ไม่ได้อีก' : 'ใช้เมื่อ Member ลืม PIN — แจ้ง PIN ใหม่ให้เจ้าตัวเป็นการส่วนตัว' }}
+                    </p>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <label class="block">
+                        <span class="block font-semibold text-gray-700 mb-1">{{ pinForm.mode === 'self' ? 'PIN เดิม' : 'PIN ของคุณ (Admin) เพื่อยืนยัน' }}</span>
+                        <input v-model="pinForm.authPin" ref="pinFirstInput" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+                               class="w-full text-center text-xl tracking-widest px-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-mono">
+                    </label>
+                    <label class="block">
+                        <span class="block font-semibold text-gray-700 mb-1">PIN ใหม่ (ตัวเลข 4 หลัก)</span>
+                        <input v-model="pinForm.newPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+                               class="w-full text-center text-xl tracking-widest px-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-mono">
+                    </label>
+                    <label class="block">
+                        <span class="block font-semibold text-gray-700 mb-1">ยืนยัน PIN ใหม่</span>
+                        <input v-model="pinForm.confirmPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"
+                               class="w-full text-center text-xl tracking-widest px-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:border-rosepink-400 font-mono">
+                    </label>
+                    <p v-if="pinForm.error" class="text-rosepink-600 font-semibold text-center">{{ pinForm.error }}</p>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button type="button" @click="closeModal('pinModal')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" :disabled="pinForm.saving" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
+                        {{ pinForm.saving ? 'กำลังบันทึก...' : 'บันทึก PIN ใหม่' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Admin Reset Inventory Confirm Modal -->
+        <div v-if="isAdmin && modals.resetInventoryModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
+                <div class="w-16 h-16 bg-rosepink-50 text-rosepink-600 rounded-3xl flex items-center justify-center text-2xl mx-auto border border-rosepink-200 shadow-sm">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 font-serif-title">Reset คลังของทุกคน?</h3>
+                    <p class="text-xs text-gray-500 mt-1">ของทุกรายการของ Member ทั้ง {{ visitorIdentities.length }} คน จะถูกตั้งเป็น 0 (ดอกกุหลาบ, ดอกกุหลาบที่ได้รับ, ELU Coin, ตั๋ว 1:1) และบันทึกลงประวัติ</p>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button @click="closeModal('resetInventoryModal')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">
+                        ยกเลิก
+                    </button>
+                    <button @click="adminResetAllInventories" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md">
+                        ยืนยัน Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Notification Center Modal -->
+        <div v-if="modals.adminNotificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-lg rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 space-y-4 max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center border-b border-cream-200 pb-3 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 bg-rosepink-50 text-rosepink-600 rounded-xl flex items-center justify-center border border-rosepink-200">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-800 font-serif-title">Admin Push Notifications 🔔</h3>
+                            <p class="text-[10px] text-gray-500">การมอบดอกกุหลาบ และคำขอ Request 1:1 ระหว่าง Member</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button v-if="adminNotifications.length > 0" @click="markAllNotificationsAsRead" class="text-[11px] text-rosepink-600 hover:underline font-semibold">
+                            อ่านทั้งหมดแล้ว
+                        </button>
+                        <button @click="closeModal('adminNotificationModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <div class="space-y-3 overflow-y-auto flex-1 pr-1 text-xs">
+                    <div v-for="notif in adminNotifications" :key="notif.id"
+                         class="p-4 rounded-2xl border transition flex items-start gap-3"
+                         :class="notif.read ? 'bg-cream-50/60 border-cream-200 text-gray-600' : 'bg-rosepink-50/80 border-rosepink-200 text-gray-800 shadow-xs'">
+                        <div class="w-10 h-10 rounded-xl bg-white border border-rosepink-200 flex items-center justify-center text-xl shrink-0 shadow-xs">
+                            {{ notif.visitorAvatar || '👤' }}
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-bold text-rosepink-700">{{ notif.visitorName }}</span>
+                                <span class="text-[10px] text-gray-400">{{ formatDate(notif.timestamp) }}</span>
+                            </div>
+                            <p v-if="notif.kind === 'request'" class="font-semibold text-xs mt-0.5">💞 ขอ Request 1:1 <span class="text-rosepink-600 font-bold">(ใช้ {{ notif.amount }} ดอก)</span></p>
+                            <p v-else class="font-semibold text-xs mt-0.5">มอบดอกกุหลาบจำนวน <span class="text-rosepink-600 font-bold">{{ notif.amount }} ดอก</span></p>
+                            <p class="text-gray-500 text-[11px] mt-1 bg-white/70 p-2 rounded-xl border border-cream-200">
+                                <span class="font-semibold text-gray-700">หมายเหตุ:</span> {{ notif.note || 'ไม่มีหมายเหตุ' }}
+                            </p>
+                        </div>
+                        <button @click="deleteNotification(notif.id)" class="text-gray-400 hover:text-rosepink-600 p-1" title="ลบการแจ้งเตือน">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div v-if="adminNotifications.length === 0" class="py-12 text-center text-gray-400">
+                        ยังไม่มีการแจ้งเตือน Push Notification จาก Member
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-cream-200 flex justify-end shrink-0">
+                    <button @click="closeModal('adminNotificationModal')" class="px-4 py-2 bg-cream-200 hover:bg-cream-300 text-gray-700 font-semibold rounded-xl text-xs">
+                        ปิด
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // ตัวตนมาจาก session ที่ยืนยัน PIN แล้ว (ดู auth.js)
+                const session = ref(currentSession());
+                if (!session.value) window.location.replace('index.html');
+                const isAdmin = computed(() => !!session.value && session.value.role === 'admin');
+                // #inventory / #logs / #admin — ลิงก์จากหน้าหลัก
+                const startHash = window.location.hash.slice(1);
+                const memberTabs = ['inventory', 'logs'];
+                const currentTab = ref(isAdmin.value ? 'admin_visitors'
+                    : memberTabs.includes(startHash) ? startHash : 'inventory');
+                if (startHash) history.replaceState(null, '', window.location.pathname);
+
+                const rouletteCanvas = ref(null);
+                const isSpinning = ref(false);
+                const winnerPrize = ref(null);
+
+                // รางวัลในวงล้อ: Firestore config/roulette (Admin แก้ได้ ทุกคนเห็นเหมือนกัน)
+                const roulettePrizes = ref(normalizePrizes(DEFAULT_PRIZES));
+                const rouletteConfigured = ref(false);
+                let prizeSaveTimer = null;
+
+                const newPrizeIcon = ref('🌹');
+                const newPrizeLabel = ref('');
+
+                const addRoulettePrize = () => {
+                    const label = newPrizeLabel.value.trim();
+                    if (!label) {
+                        triggerToast('กรุณาพิมพ์ชื่อรางวัลใหม่ก่อน');
+                        return;
+                    }
+                    if (roulettePrizes.value.length >= 12) {
+                        triggerToast('มีรางวัลได้สูงสุด 12 ช่อง');
+                        return;
+                    }
+                    roulettePrizes.value.push({ label, icon: newPrizeIcon.value });
+                    newPrizeLabel.value = '';
+                    saveRoulettePrizes(true);
+                };
+
+                const removeRoulettePrize = (index) => {
+                    if (roulettePrizes.value.length <= 2) {
+                        triggerToast('ต้องมีรางวัลในวงล้ออย่างน้อย 2 รายการ');
+                        return;
+                    }
+                    roulettePrizes.value.splice(index, 1);
+                    saveRoulettePrizes(true);
+                };
+
+                // บันทึกอัตโนมัติ (รอพิมพ์เสร็จ 0.8 วินาที) — เฉพาะ Admin
+                const saveRoulettePrizes = (immediate = false) => {
+                    nextTick(() => { drawWheel(0); });
+                    if (!isAdmin.value) return;
+                    clearTimeout(prizeSaveTimer);
+                    prizeSaveTimer = setTimeout(async () => {
+                        prizeSaveTimer = null;
+                        const key = requireKey();
+                        if (!key) return;
+                        try {
+                            await commitInventoryChange({ op: { kind: 'admin' }, by: key, roulettePrizes: normalizePrizes(roulettePrizes.value) });
+                        } catch (err) {
+                            triggerToast(inventoryErrorText(err));
+                        }
+                    }, immediate === true ? 0 : 800);
+                };
+
+                // Perfected drawWheel: angle 0 points straight up (top pointer).
+                const WHEEL_SIZE = 320; // ขนาดวาดจริง (logical px) — CSS ย่อให้พอดีจอ
+                const HUB_RADIUS = 23;
+
+                const drawWheel = (rotationAngle = 0) => {
+                    const canvas = rouletteCanvas.value;
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+
+                    // วาดความละเอียดตามจอ (มือถือ/Retina) เพื่อไม่ให้ตัวหนังสือเบลอ
+                    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+                    if (canvas.width !== WHEEL_SIZE * dpr) {
+                        canvas.width = WHEEL_SIZE * dpr;
+                        canvas.height = WHEEL_SIZE * dpr;
+                    }
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                    const centerX = WHEEL_SIZE / 2;
+                    const centerY = WHEEL_SIZE / 2;
+                    const radius = WHEEL_SIZE / 2 - 8;
+
+                    ctx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
+
+                    const prizes = roulettePrizes.value;
+                    const numSegments = prizes.length;
+                    if (numSegments === 0) return;
+
+                    const arc = (2 * Math.PI) / numSegments;
+                    // จำนวนช่องเป็นเลขคี่ → ช่องสุดท้ายใช้สีที่ 3 เพื่อไม่ให้สีเดียวกันติดกัน
+                    const fillFor = (i) => (numSegments % 2 === 1 && i === numSegments - 1) ? '#FFE3E8' : (i % 2 === 0 ? '#FCD1D7' : '#FFFFFF');
+
+                    // ขอบนอก
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius + 4, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#E04D70';
+                    ctx.fill();
+
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(rotationAngle);
+
+                    const iconX = radius - 17;          // ไอคอนอยู่ใกล้ขอบ
+                    const labelStart = radius - 31;     // ชื่อรางวัลเริ่มถัดจากไอคอน
+                    const labelRoom = labelStart - HUB_RADIUS - 6; // พื้นที่ถึงวงกลมกลาง
+
+                    // ใช้ขนาดตัวอักษรเดียวกันทั้งวงล้อ = ขนาดที่ชื่อยาวที่สุดยังพอดีช่อง (13 → 9px)
+                    let fontSize = 13;
+                    const fits = (size) => {
+                        ctx.font = `600 ${size}px Prompt, sans-serif`;
+                        return prizes.every(p => ctx.measureText(p.label || '').width <= labelRoom);
+                    };
+                    while (fontSize > 9 && !fits(fontSize)) fontSize -= 1;
+                    const labelFont = `600 ${fontSize}px Prompt, sans-serif`;
+
+                    for (let i = 0; i < numSegments; i++) {
+                        const startAngle = i * arc - Math.PI / 2;
+                        const midAngle = startAngle + arc / 2;
+
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.arc(0, 0, radius, startAngle, startAngle + arc, false);
+                        ctx.closePath();
+                        ctx.fillStyle = fillFor(i);
+                        ctx.fill();
+                        ctx.strokeStyle = '#F07590';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+
+                        // ช่องที่อยู่ครึ่งซ้ายของวงล้อ (ตามมุมที่หมุนอยู่ตอนนี้) กลับด้านตัวหนังสือให้อ่านได้ไม่คว่ำ
+                        const flipped = Math.cos(midAngle + rotationAngle) < 0;
+                        const dir = flipped ? -1 : 1;
+
+                        ctx.save();
+                        ctx.rotate(flipped ? midAngle + Math.PI : midAngle);
+                        ctx.textBaseline = 'middle';
+
+                        const prize = prizes[i];
+                        ctx.textAlign = 'center';
+                        ctx.font = '16px sans-serif';
+                        ctx.fillText(prize.icon || '', dir * iconX, 0);
+
+                        // ชื่อที่ยาวเกินแม้ใช้ตัวเล็กสุดแล้ว ค่อยตัดด้วย …
+                        let label = prize.label || '';
+                        ctx.font = labelFont;
+                        while (ctx.measureText(label).width > labelRoom && label.length > 1) {
+                            label = label.slice(0, -1);
+                            if (ctx.measureText(label + '…').width <= labelRoom) { label += '…'; break; }
+                        }
+                        ctx.fillStyle = '#4A3E3D';
+                        ctx.textAlign = flipped ? 'left' : 'right';
+                        ctx.fillText(label, dir * labelStart, 0);
+                        ctx.restore();
+                    }
+
+                    ctx.restore();
+
+                    // วงกลมตรงกลาง
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, HUB_RADIUS, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#E04D70';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '700 12px Prompt, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('LOVE', centerX, centerY + 1);
+                };
+
+                const defaultInventoryItems = [
+                    { id: 'rose', name: 'ดอกกุหลาบที่ใช้ได้', englishName: 'Usable Roses', icon: '🌹', count: 0, unit: 'ดอก', description: 'ได้จาก Admin และรางวัลวงล้อ — ใช้มอบให้ Member และขอ Request 1:1' },
+                    { id: 'rose_received', name: 'ดอกกุหลาบที่ได้รับจาก Member', englishName: 'From Members', icon: '💌', count: 0, unit: 'ดอก', description: 'ยอดรวมที่ Member มอบให้ และจากการถูกขอ Request 1:1 — แสดงผลรวม ใช้จ่ายไม่ได้' },
+                    { id: 'elu_coin', name: 'ELU Coin', englishName: 'ELU Coin', icon: '🪙', count: 0, unit: 'เหรียญ', description: 'เหรียญสะสมพิเศษสำหรับกิจกรรม' },
+                    { id: 'ticket_1to1', name: 'ตั๋ว 1:1', englishName: '1:1 Ticket', icon: '🎫', count: 0, unit: 'ใบ', description: 'ตั๋วสิทธิ์พิเศษ 1 ต่อ 1' }
+                ];
+
+                // รายชื่อมาจาก ACCOUNTS ใน auth.js (รหัสผ่านตรวจที่หน้า Login) — ที่นี่เก็บแค่ avatar
+                const avatars = {
+                    Lu: '👑', Siren: '🧜‍♀️', Eros: '🏹', Amor: '💖',
+                    Faye: '🌸', Bac: '🌿', Beam: '✨', Feen: '🍃', Jet: '🚀', Nezumi: '🐭',
+                    Rohinii: '⭐', Piink: '🎀', Third: '☘️', Qin: '🐉', Rita: '🌷', Teddy: '🧸'
+                };
+                const identities = ACCOUNTS.map(a => ({
+                    id: a.name.toLowerCase(),
+                    name: a.name,
+                    avatar: avatars[a.name] || '👤',
+                    role: a.role === 'admin' ? 'admin' : 'visitor',
+                    description: a.role === 'admin' ? 'ผู้ดูแลคลังกุหลาบ (Admin)' : 'สมาชิก (Member)'
+                }));
+                const getIdentityName = (id) => (identities.find(i => i.id === id) || {}).name || '-';
+
+                const visitorIdentities = computed(() => identities.filter(i => i.role === 'visitor'));
+
+                const selectedVisitorIdForAdmin = ref(localStorage.getItem('rose_vault_selected_admin_visitor') || (visitorIdentities.value[0]?.id || 'faye'));
+                const selectedVisitorForAdmin = computed(() => {
+                    return identities.find(i => i.id === selectedVisitorIdForAdmin.value) || visitorIdentities.value[0] || null;
+                });
+
+                const adminInputValues = ref({
+                    rose: null,
+                    elu_coin: null,
+                    ticket_1to1: null,
+                    rose_received: null
+                });
+
+                // Add / Delete ใช้ช่องจำนวนเดียวกัน: Add = บวกเพิ่ม, Delete = ลบออก (ไม่ต่ำกว่า 0)
+                const adminApplyCustomValue = (itemId, sign) => {
+                    const val = adminInputValues.value[itemId];
+                    if (val === null || val === undefined || val === '' || isNaN(val) || val === 0) {
+                        triggerToast(sign > 0 ? 'กรุณากรอกตัวเลขจำนวนที่ต้องการเพิ่ม' : 'กรุณากรอกตัวเลขจำนวนที่ต้องการลบ');
+                        return;
+                    }
+                    adminAdjustSelectedVisitorItem(itemId, sign * Math.abs(Number(val)));
+                    adminInputValues.value[itemId] = null;
+                };
+                const adminAddCustomValue = (itemId) => adminApplyCustomValue(itemId, 1);
+                const adminDeleteCustomValue = (itemId) => adminApplyCustomValue(itemId, -1);
+
+                const displayTabs = computed(() => {
+                    if (isAdmin.value) {
+                        return [
+                            { id: 'admin_visitors', name: 'รายชื่อ Members 👥', icon: 'fa-solid fa-users text-rosepink-400' },
+                            { id: 'admin_visitor_inventory', name: selectedVisitorForAdmin.value ? `คลังของ ${selectedVisitorForAdmin.value.name} 🎒` : 'คลัง Member 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
+                            { id: 'admin_logs', name: 'ประวัติ Logs ทั้งหมด 📝', icon: 'fa-solid fa-history' }
+                        ];
+                    }
+                    return [
+                        { id: 'inventory', name: 'Inventory ของฉัน 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
+                        { id: 'logs', name: 'ประวัติบันทึก 📝', icon: 'fa-solid fa-history' }
+                    ];
+                });
+
+                const switchTab = (tabId) => {
+                    currentTab.value = tabId;
+                };
+
+                const viewVisitorInventory = (visitor) => {
+                    selectedVisitorIdForAdmin.value = visitor.id;
+                    localStorage.setItem('rose_vault_selected_admin_visitor', visitor.id);
+                    currentTab.value = 'admin_visitor_inventory';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const onAdminVisitorChange = () => {
+                    localStorage.setItem('rose_vault_selected_admin_visitor', selectedVisitorIdForAdmin.value);
+                };
+
+                // ===== คลัง: Firestore inventories/{id} (ทุกเครื่องเห็นตรงกัน) =====
+                const invDocs = ref({});
+                const inventoryFor = (uid) => ({ ...emptyInventory(), ...(invDocs.value[uid] || {}) });
+                const itemsFor = (uid) => {
+                    const inv = inventoryFor(uid);
+                    return defaultInventoryItems.map(it => ({ ...it, count: inv[ITEM_FIELDS[it.id]] }));
+                };
+                const userInventoriesMap = computed(() => Object.fromEntries(identities.map(i => [i.id, itemsFor(i.id)])));
+
+                const getVisitorRoseCount = (visitorId) => inventoryFor(visitorId).rose;
+                const getVisitorCoinCount = (visitorId) => inventoryFor(visitorId).coin;
+                const getVisitorReceivedRoseCount = (visitorId) => visitorId ? inventoryFor(visitorId).received : 0;
+
+                const currentAdminVisitorInventory = computed(() => itemsFor(selectedVisitorIdForAdmin.value));
+
+                const requireKey = () => {
+                    const key = session.value && session.value.key;
+                    if (!key) triggerToast('กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้ง');
+                    return key;
+                };
+                const inventoryErrorText = (err) => {
+                    if (err && err.code === 'permission-denied') return 'ทำรายการไม่ได้ — ข้อมูลอาจเปลี่ยนไปแล้ว หรือ PIN ถูกเปลี่ยน ลองใหม่ หรือออกจากระบบแล้วเข้าใหม่';
+                    return 'ทำรายการไม่สำเร็จ: ' + (err && err.message ? err.message : err);
+                };
+
+                const adminAdjustSelectedVisitorItem = (itemId, delta) =>
+                    adminAdjustVisitorItem(selectedVisitorForAdmin.value, itemId, delta);
+
+                const adminAdjustVisitorItem = async (visitor, itemId, delta) => {
+                    if (!visitor || !isAdmin.value) return;
+                    const key = requireKey();
+                    if (!key) return;
+                    const field = ITEM_FIELDS[itemId];
+                    const prev = inventoryFor(visitor.id);
+                    const next = { ...prev, [field]: Math.max(0, prev[field] + delta) };
+                    const diff = next[field] - prev[field];
+                    if (diff === 0) return;
+                    const adminName = currentIdentity.value ? currentIdentity.value.name : 'Admin';
+                    const item = defaultInventoryItems.find(i => i.id === itemId);
+                    const isReceived = itemId === 'rose_received';
+                    try {
+                        await commitInventoryChange({
+                            op: { kind: 'admin' }, by: key,
+                            updates: [{ user: visitor.id, next }],
+                            logs: [{
+                                userId: visitor.id, itemId, changeType: diff > 0 ? 'add' : 'remove', amount: Math.abs(diff),
+                                note: isReceived ? (diff > 0 ? 'ได้รับดอกกุหลาบ (ไม่เปิดเผยตัวตน) 💌' : 'ปรับลดกุหลาบที่ได้รับ') : 'ปรับยอดของในคลัง',
+                                adminNote: `[Admin: ${adminName}] ปรับยอด${isReceived ? 'กุหลาบที่ได้รับ' : ''}ของ ${visitor.name}`
+                            }]
+                        });
+                        triggerToast(`อัปเดต ${item.name} ของ ${visitor.name} เป็น ${next[field]} ${item.unit}`);
+                    } catch (err) {
+                        triggerToast(inventoryErrorText(err));
+                    }
+                };
+
+                const selectedIdentityId = computed(() => session.value ? session.value.name.toLowerCase() : null);
+                const pendingIdentity = ref(null);
+                const adminPinInput = ref('');
+                const pinInput = ref(null);
+
+                const currentIdentity = computed(() => {
+                    if (!selectedIdentityId.value) return null;
+                    return identities.find(i => i.id === selectedIdentityId.value) || null;
+                });
+
+                const inventoryItems = computed(() => itemsFor(currentIdentity.value ? currentIdentity.value.id : '__guest'));
+
+                const inventoryLogs = ref([]); // จาก Firestore logs (ใหม่สุดก่อน)
+                const myLogs = computed(() => inventoryLogs.value.filter(l => currentIdentity.value && l.userId === currentIdentity.value.id));
+
+                const adminLogsFilter = ref('all');
+                const adminFilteredLogs = computed(() => adminLogsFilter.value === 'all'
+                    ? inventoryLogs.value
+                    : inventoryLogs.value.filter(l => l.userId === adminLogsFilter.value));
+
+                // Admin Push Notifications (สร้างเมื่อมีการมอบดอกกุหลาบ) — Firestore notifications
+                const adminNotifications = ref([]);
+                const unreadAdminNotificationsCount = computed(() => adminNotifications.value.filter(n => !n.read).length);
+                const markAllNotificationsAsRead = async () => {
+                    try { await markNotificationsRead(adminNotifications.value.filter(n => !n.read).map(n => n.id)); }
+                    catch (err) { triggerToast(inventoryErrorText(err)); }
+                };
+                const deleteNotification = async (id) => { try { await hideNotification(id); } catch (err) { triggerToast(inventoryErrorText(err)); } };
+
+                const totalRosesReceived = computed(() => currentIdentity.value ? inventoryFor(currentIdentity.value.id).received : 0);
+
+                const currentRoseCount = computed(() => {
+                    const rose = inventoryItems.value.find(i => i.id === 'rose');
+                    return rose ? rose.count : 0;
+                });
+
+                const currentCoinCount = computed(() => {
+                    const coin = inventoryItems.value.find(i => i.id === 'elu_coin');
+                    return coin ? coin.count : 0;
+                });
+
+
+                let inventoriesSeeded = false;
+                try {
+                    subscribeInventories((map) => {
+                        invDocs.value = map;
+                        if (!inventoriesSeeded) {
+                            inventoriesSeeded = true;
+                            ensureInventories(identities.map(i => i.id), map).catch(() => {});
+                        }
+                    }, (err) => triggerToast('โหลดคลังไม่ได้: ' + (err && err.message ? err.message : err)));
+                    subscribeLogs((list) => { inventoryLogs.value = list; }, () => {});
+                    subscribeNotifications((list) => { adminNotifications.value = list; }, () => {});
+                    subscribeRoulette((prizes) => {
+                        rouletteConfigured.value = !!prizes;
+                        if (prizeSaveTimer) return; // Admin กำลังแก้อยู่ — ไม่ทับสิ่งที่พิมพ์
+                        roulettePrizes.value = normalizePrizes(prizes || DEFAULT_PRIZES);
+                        if (modals.value.rouletteModal && !isSpinning.value) nextTick(() => drawWheel(0));
+                    }, () => {});
+                } catch (err) {
+                    console.error(err);
+                }
+
+                const modals = ref({
+                    adminAuth: false,
+                    identityModal: false,
+                    rouletteResult: false,
+                    rouletteModal: false,
+                    insufficientCoinsModal: false,
+                    adminNotificationModal: false,
+                    resetInventoryModal: false,
+                    pinModal: false,
+                    profileEdit: false
+                });
+
+                // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Member ทุกคนเป็น 0
+                // (ใช้ logic เดียวกับ Delete จึงบันทึก log ทุกรายการที่ถูกล้าง)
+                const adminResetAllInventories = async () => {
+                    if (!isAdmin.value) return;
+                    const key = requireKey();
+                    if (!key) return;
+                    const adminName = currentIdentity.value ? currentIdentity.value.name : 'Admin';
+                    const updates = [];
+                    const logs = [];
+                    visitorIdentities.value.forEach(visitor => {
+                        const prev = inventoryFor(visitor.id);
+                        if (!prev.rose && !prev.received && !prev.coin && !prev.ticket) return;
+                        updates.push({ user: visitor.id, next: emptyInventory() });
+                        Object.entries(ITEM_FIELDS).forEach(([itemId, field]) => {
+                            if (prev[field] > 0) logs.push({
+                                userId: visitor.id, itemId, changeType: 'remove', amount: prev[field],
+                                note: 'ปรับยอดของในคลัง', adminNote: `[Admin: ${adminName}] Reset คลังทุกคน`
+                            });
+                        });
+                    });
+                    closeModal('resetInventoryModal');
+                    if (!updates.length) { triggerToast('คลังของทุกคนเป็น 0 อยู่แล้ว'); return; }
+                    try {
+                        await commitInventoryChange({ op: { kind: 'admin' }, by: key, updates, logs });
+                        triggerToast('Reset คลังของ Member ทุกคนเรียบร้อยแล้ว');
+                    } catch (err) {
+                        triggerToast(inventoryErrorText(err));
+                    }
+                };
+
+                const spinWheel = async () => {
+                    if (isSpinning.value || roulettePrizes.value.length === 0) return;
+
+                    const prizes = roulettePrizes.value;
+                    const winningIndex = Math.floor(Math.random() * prizes.length);
+                    const prize = prizes[winningIndex];
+
+                    // Member: บันทึกผล (หักเหรียญ + รางวัล) ก่อนเริ่มหมุน — ถ้าบันทึกไม่ได้ วงล้อจะไม่หมุน
+                    if (!isAdmin.value) {
+                        if (!currentIdentity.value || currentCoinCount.value < SPIN_COST) {
+                            openModal('insufficientCoinsModal');
+                            return;
+                        }
+                        if (!rouletteConfigured.value) {
+                            triggerToast('Admin ยังไม่ได้ตั้งค่าวงล้อ — ติดต่อ Admin');
+                            return;
+                        }
+                        const key = requireKey();
+                        if (!key) return;
+                        const me = currentIdentity.value;
+                        const prev = inventoryFor(me.id);
+                        const next = { ...prev, coin: prev.coin - SPIN_COST };
+                        next[prize.item] += prize.amount;
+                        const itemId = Object.keys(ITEM_FIELDS).find(k => ITEM_FIELDS[k] === prize.item);
+                        isSpinning.value = true;
+                        try {
+                            await commitInventoryChange({
+                                op: { kind: 'spin', user: me.id, prize: winningIndex }, by: key,
+                                updates: [{ user: me.id, next }],
+                                logs: [
+                                    { userId: me.id, itemId: 'elu_coin', changeType: 'remove', amount: SPIN_COST, note: 'ใช้ ELU Coin หมุน Love Roulette 🎡' },
+                                    { userId: me.id, itemId, changeType: 'add', amount: prize.amount, note: `รางวัลจาก Love Roulette 🎡 (${prize.label})` }
+                                ]
+                            });
+                        } catch (err) {
+                            isSpinning.value = false;
+                            triggerToast(inventoryErrorText(err));
+                            return;
+                        }
+                    }
+
+                    isSpinning.value = true;
+                    const arc = (2 * Math.PI) / prizes.length;
+                    // ให้ช่องที่ได้หยุดตรงเข็มด้านบน: rotation = -(i * arc + arc / 2)
+                    const targetAngle = -(winningIndex * arc + arc / 2);
+                    const finalRotation = Math.PI * 2 * 6 + targetAngle; // หมุน 6 รอบก่อนหยุด
+                    const duration = 3500;
+                    const startTime = performance.now();
+
+                    const animateSpin = (currentTime) => {
+                        const progress = Math.min((currentTime - startTime) / duration, 1);
+                        const easeOut = 1 - Math.pow(1 - progress, 3);
+                        drawWheel(easeOut * finalRotation);
+                        if (progress < 1) {
+                            requestAnimationFrame(animateSpin);
+                        } else {
+                            winnerPrize.value = prize;
+                            drawWheel(targetAngle);
+                            // เว้นจังหวะให้เห็นว่าเข็มหยุดที่ช่องไหน ก่อนเปิดหน้าต่างผลรางวัล
+                            setTimeout(() => {
+                                isSpinning.value = false;
+                                modals.value.rouletteResult = true;
+                                if (!isAdmin.value) triggerToast(`ได้รับ ${prize.label} เข้าสู่คลังแล้ว! 🎉`);
+                                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, zIndex: 60 });
+                            }, 700);
+                        }
+                    };
+                    requestAnimationFrame(animateSpin);
+                };
+
+                const openRouletteModal = () => {
+                    modals.value.rouletteModal = true;
+                    nextTick(() => { drawWheel(0); });
+                };
+
+                const openModal = (modalName) => {
+                    modals.value[modalName] = true;
+                };
+
+                const closeModal = (modalName) => {
+                    modals.value[modalName] = false;
+                };
+
+                const selectIdentity = (user) => {
+                    pendingIdentity.value = user;
+                    adminPinInput.value = '';
+                    closeModal('identityModal');
+                    openModal('adminAuth');
+                    nextTick(() => pinInput.value && pinInput.value.focus());
+                };
+
+                const verifyAdminPasscode = async () => {
+                    const user = pendingIdentity.value;
+                    if (!user) return;
+                    let s;
+                    try {
+                        s = await login(user.name, String(adminPinInput.value));
+                    } catch (err) {
+                        triggerToast('เชื่อมต่อระบบไม่ได้ ลองใหม่อีกครั้ง: ' + (err && err.message ? err.message : err));
+                        return;
+                    }
+                    if (s) {
+                        session.value = s;
+                        currentTab.value = isAdmin.value ? 'admin_visitors' : 'inventory';
+                        closeModal('adminAuth');
+                        pendingIdentity.value = null;
+                        triggerToast(`เข้าสู่ระบบในนาม ${user.name} สำเร็จ! ✨`);
+                    } else {
+                        adminPinInput.value = '';
+                        triggerToast('รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                    }
+                };
+
+                const logoutAdmin = () => {
+                    sessionStorage.removeItem(SESSION_KEY);
+                    session.value = null;
+                    window.location.href = 'index.html';
+                };
+
+                const toast = ref({ show: false, message: '' });
+                const triggerToast = (msg) => {
+                    toast.value.message = msg;
+                    toast.value.show = true;
+                    setTimeout(() => { toast.value.show = false; }, 3000);
+                };
+
+                const formatDate = (ts) => {
+                    const d = new Date(ts);
+                    return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                };
+
+                const getItemName = (id) => {
+                    const map = {
+                        rose: '🌹 ดอกกุหลาบที่ใช้ได้',
+                        rose_received: '💌 ดอกกุหลาบจาก Member',
+                        elu_coin: '🪙 ELU Coin',
+                        ticket_1to1: '🎫 ตั๋ว 1:1'
+                    };
+                    return map[id] || id;
+                };
+
+                const getItemUnit = (id) => {
+                    const map = {
+                        rose: 'ดอก',
+                        rose_received: 'ดอก',
+                        elu_coin: 'เหรียญ',
+                        ticket_1to1: 'ใบ'
+                    };
+                    return map[id] || '';
+                };
+
+                const getChangeTypeLabel = (type) => {
+                    if (type === 'add') return 'เพิ่มเข้า';
+                    if (type === 'remove') return 'ลดออก';
+                    return type;
+                };
+
+                // ===== เปลี่ยน PIN (ของตัวเอง) / ตั้ง PIN ใหม่ให้ Member (Admin) — เก็บใน Firestore =====
+                const pinForm = ref({ mode: 'self', targetName: '', authPin: '', newPin: '', confirmPin: '', error: '', saving: false });
+                const pinFirstInput = ref(null);
+
+                const openPinModal = (mode) => {
+                    const me = currentIdentity.value;
+                    if (!me) return;
+                    const target = mode === 'admin' ? selectedVisitorForAdmin.value : me;
+                    if (!target || (mode === 'admin' && !isAdmin.value)) return;
+                    pinForm.value = { mode, targetName: target.name, authPin: '', newPin: '', confirmPin: '', error: '', saving: false };
+                    openModal('pinModal');
+                    nextTick(() => pinFirstInput.value && pinFirstInput.value.focus());
+                };
+
+                const submitPinChange = async () => {
+                    const f = pinForm.value;
+                    f.error = '';
+                    if (!/^\d{4}$/.test(f.authPin)) { f.error = f.mode === 'self' ? 'กรอก PIN เดิม 4 หลัก' : 'กรอก PIN ของคุณ 4 หลัก'; return; }
+                    if (!/^\d{4}$/.test(f.newPin)) { f.error = 'PIN ใหม่ต้องเป็นตัวเลข 4 หลัก'; return; }
+                    if (f.newPin !== f.confirmPin) { f.error = 'ยืนยัน PIN ใหม่ไม่ตรงกัน'; return; }
+                    if (f.mode === 'self' && f.newPin === f.authPin) { f.error = 'PIN ใหม่ต้องไม่ซ้ำกับ PIN เดิม'; return; }
+                    f.saving = true;
+                    let err;
+                    try {
+                        err = await setPin(currentIdentity.value.name, f.authPin, f.targetName, f.newPin);
+                    } catch (e) {
+                        err = 'บันทึกไม่สำเร็จ: ' + (e && e.message ? e.message : e);
+                    }
+                    f.saving = false;
+                    if (err) { f.error = err; return; }
+                    // เปลี่ยน PIN ของตัวเอง → key ใน session เปลี่ยนด้วย (ใช้แก้โปรไฟล์)
+                    if (f.mode === 'self') {
+                        try { const s = await login(currentIdentity.value.name, f.newPin); if (s) session.value = s; } catch {}
+                    }
+                    closeModal('pinModal');
+                    triggerToast(f.mode === 'self' ? 'เปลี่ยน PIN เรียบร้อยแล้ว 🔑' : `ตั้ง PIN ใหม่ให้ ${f.targetName} เรียบร้อยแล้ว 🔑`);
+                };
+
+                // ===== โปรไฟล์ (Firestore: profiles/{id}) =====
+                const profiles = ref({});
+                const profilesError = ref('');
+                let profilesUnsubscribe = null;
+                watch(() => currentIdentity.value && currentIdentity.value.id, () => {
+                    if (profilesUnsubscribe) { profilesUnsubscribe(); profilesUnsubscribe = null; }
+                    profilesError.value = '';
+                    if (!currentIdentity.value) return;
+                    try {
+                        profilesUnsubscribe = subscribeProfiles(
+                            (map) => { profiles.value = map; },
+                            (err) => { profilesError.value = 'โหลดโปรไฟล์ไม่ได้: ' + (err && err.message ? err.message : err); });
+                    } catch (err) {
+                        profilesError.value = 'โหลดโปรไฟล์ไม่ได้: ' + (err && err.message ? err.message : err);
+                    }
+                }, { immediate: true });
+
+                const profileOf = (id) => profiles.value[id] || emptyProfile();
+                const profileDraft = ref(emptyProfile());
+                const profileEditError = ref('');
+                const profileSaving = ref(false);
+                const profilePhotoBusy = ref(false);
+
+                const errorText = (err) => {
+                    if (err && err.code === 'permission-denied') return 'บันทึกไม่ได้ — PIN อาจถูกเปลี่ยน กรุณาออกจากระบบแล้วเข้าใหม่';
+                    return 'บันทึกไม่สำเร็จ: ' + (err && err.message ? err.message : err);
+                };
+
+                const openProfileEdit = () => {
+                    const mine = profileOf(currentIdentity.value.id);
+                    profileDraft.value = { ...emptyProfile(), ...JSON.parse(JSON.stringify(mine)) };
+                    profileEditError.value = '';
+                    openModal('profileEdit');
+                };
+                const addDraftPhoto = async (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    e.target.value = '';
+                    if (!file || profileDraft.value.photos.length >= PROFILE_MAX_PHOTOS) return;
+                    profilePhotoBusy.value = true;
+                    profileEditError.value = '';
+                    try {
+                        profileDraft.value.photos.push(await compressImage(file));
+                    } catch (err) {
+                        profileEditError.value = err && err.message ? err.message : String(err);
+                    } finally {
+                        profilePhotoBusy.value = false;
+                    }
+                };
+                const removeDraftPhoto = (i) => profileDraft.value.photos.splice(i, 1);
+                const makeDraftPhotoMain = (i) => {
+                    const [p] = profileDraft.value.photos.splice(i, 1);
+                    profileDraft.value.photos.unshift(p);
+                };
+                const toggleDraftTag = (tag) => {
+                    const tags = profileDraft.value.tags;
+                    const at = tags.indexOf(tag);
+                    if (at >= 0) tags.splice(at, 1);
+                    else if (tags.length < PROFILE_MAX_TAGS) tags.push(tag);
+                    else triggerToast(`เลือกแท็กได้สูงสุด ${PROFILE_MAX_TAGS} แท็ก`);
+                };
+                const addDraftPrompt = () => {
+                    const used = profileDraft.value.prompts.map(p => p.q);
+                    const q = PROFILE_PROMPTS.find(x => !used.includes(x));
+                    if (q) profileDraft.value.prompts.push({ q, a: '' });
+                };
+
+                const submitProfileEdit = async () => {
+                    profileEditError.value = '';
+                    if (profileDraft.value.prompts.some(p => !String(p.a || '').trim())) {
+                        profileEditError.value = 'กรอกคำตอบให้ครบ หรือลบคำถามที่ไม่ใช้';
+                        return;
+                    }
+                    if (!session.value || !session.value.key) {
+                        profileEditError.value = 'กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้ง ก่อนแก้โปรไฟล์';
+                        return;
+                    }
+                    profileSaving.value = true;
+                    try {
+                        await saveProfile(currentIdentity.value.id, session.value.key, profileDraft.value);
+                        closeModal('profileEdit');
+                        triggerToast('บันทึกโปรไฟล์เรียบร้อยแล้ว 💕');
+                    } catch (err) {
+                        profileEditError.value = errorText(err);
+                    } finally {
+                        profileSaving.value = false;
+                    }
+                };
+
+                return {
+                    PROFILE_MAX_PHOTOS, PROFILE_MAX_TAGS, PROFILE_MAX_PROMPTS, PROFILE_BIO_MAX, PROFILE_ANSWER_MAX,
+                    PROFILE_TAG_GROUPS, PROFILE_PROMPTS, MBTI_TYPES, ZODIACS, PROFILE_THEMES,
+                    profilesError,
+                    profileOf,
+                    profileDraft,
+                    profileEditError,
+                    profileSaving,
+                    profilePhotoBusy,
+                    openProfileEdit,
+                    addDraftPhoto,
+                    removeDraftPhoto,
+                    makeDraftPhotoMain,
+                    toggleDraftTag,
+                    addDraftPrompt,
+                    submitProfileEdit,
+                    pinForm,
+                    pinFirstInput,
+                    openPinModal,
+                    submitPinChange,
+                    isAdmin,
+                    currentTab,
+                    displayTabs,
+                    switchTab,
+                    rouletteCanvas,
+                    isSpinning,
+                    winnerPrize,
+                    roulettePrizes,
+                    newPrizeIcon,
+                    newPrizeLabel,
+                    addRoulettePrize,
+                    removeRoulettePrize,
+                    saveRoulettePrizes,
+                    spinWheel,
+                    identities,
+                    visitorIdentities,
+                    selectedVisitorIdForAdmin,
+                    selectedVisitorForAdmin,
+                    viewVisitorInventory,
+                    onAdminVisitorChange,
+                    getVisitorRoseCount,
+                    getVisitorCoinCount,
+                    getVisitorReceivedRoseCount,
+                    currentAdminVisitorInventory,
+                    adminInputValues,
+                    adminAddCustomValue,
+                    adminDeleteCustomValue,
+                    adminResetAllInventories,
+                    selectedIdentityId,
+                    pendingIdentity,
+                    adminPinInput,
+                    pinInput,
+                    selectIdentity,
+                    verifyAdminPasscode,
+                    currentIdentity,
+                    getIdentityName,
+                    inventoryItems,
+                    inventoryLogs,
+                    myLogs,
+                    adminLogsFilter,
+                    adminFilteredLogs,
+                    adminNotifications,
+                    unreadAdminNotificationsCount,
+                    markAllNotificationsAsRead,
+                    deleteNotification,
+                    totalRosesReceived,
+                    currentRoseCount,
+                    currentCoinCount,
+                    modals,
+                    openRouletteModal,
+                    openModal,
+                    closeModal,
+                    logoutAdmin,
+                    toast,
+                    formatDate,
+                    getItemName,
+                    getItemUnit,
+                    getChangeTypeLabel
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
