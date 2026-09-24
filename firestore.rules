@@ -108,6 +108,97 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ===== คลัง (inventories) + ใบอนุญาต (ops) + ประวัติ/แจ้งเตือน/วงล้อ =====
+    function isAdminKey(k) {
+      let kd = get(/databases/$(database)/documents/pinkeys/$(k)).data;
+      let g = genOf(kd.user);
+      return kd.gen == g.gen && g.role == 'admin';
+    }
+    function opAfter(id) {
+      return getAfter(/databases/$(database)/documents/ops/$(id)).data;
+    }
+    // ใบอนุญาตต้องถูกสร้างในชุดเดียวกันนี้ (ใช้ซ้ำไม่ได้)
+    function freshOp(id) {
+      return id is string
+        && !exists(/databases/$(database)/documents/ops/$(id))
+        && existsAfter(/databases/$(database)/documents/ops/$(id));
+    }
+    function validInv(d) {
+      return d.keys().hasOnly(['rose', 'received', 'coin', 'ticket', 'op'])
+        && d.rose is int && d.rose >= 0
+        && d.received is int && d.received >= 0
+        && d.coin is int && d.coin >= 0
+        && d.ticket is int && d.ticket >= 0;
+    }
+    function bonus(pr, item) {
+      return pr.item == item ? pr.amount : 0;
+    }
+    function invOpOk(u, p, o, n) {
+      return p.kind == 'admin'
+        || (p.kind == 'gift' && p.amount is int && p.amount > 0 && p.from != p.to
+            && ((u == p.from && n.rose == o.rose - p.amount && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
+             || (u == p.to && n.received == o.received + p.amount && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
+                 && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
+        || (p.kind == 'spin' && u == p.user && p.prize is int && o.coin >= 20 && n.received == o.received
+            && n.coin == o.coin - 20 + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'coin')
+            && n.rose == o.rose + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'rose')
+            && n.ticket == o.ticket + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'ticket'));
+    }
+
+    match /ops/{o} {
+      allow read: if false;
+      allow create: if request.resource.data.by is string && (
+          (request.resource.data.kind == 'admin'
+            && request.resource.data.keys().hasOnly(['kind', 'by'])
+            && isAdminKey(request.resource.data.by))
+        || (request.resource.data.kind == 'gift'
+            && request.resource.data.keys().hasOnly(['kind', 'by', 'from', 'to', 'amount'])
+            && canAuthorize(request.resource.data.by, request.resource.data.from))
+        || (request.resource.data.kind == 'spin'
+            && request.resource.data.keys().hasOnly(['kind', 'by', 'user', 'prize'])
+            && canAuthorize(request.resource.data.by, request.resource.data.user)));
+      allow update, delete: if false;
+    }
+
+    match /inventories/{u} {
+      allow read: if true;
+      allow create: if u.matches('[a-z]+')
+                    && request.resource.data == {'rose': 0, 'received': 0, 'coin': 0, 'ticket': 0, 'op': 'init'};
+      allow update: if validInv(request.resource.data)
+                    && freshOp(request.resource.data.op)
+                    && invOpOk(u, opAfter(request.resource.data.op), resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /logs/{l} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['userId', 'itemId', 'changeType', 'amount', 'note', 'adminNote', 'timestamp', 'op'])
+                    && request.resource.data.amount is int
+                    && request.resource.data.timestamp is number
+                    && freshOp(request.resource.data.op);
+      allow update, delete: if false;
+    }
+
+    match /notifications/{n} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['visitorId', 'visitorName', 'visitorAvatar', 'amount', 'note', 'read', 'deleted', 'timestamp', 'op'])
+                    && freshOp(request.resource.data.op);
+      // อ่านแล้ว / ซ่อน เท่านั้น
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'deleted']);
+      allow delete: if false;
+    }
+
+    match /config/roulette {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['prizes', 'op'])
+                    && request.resource.data.prizes is list
+                    && request.resource.data.prizes.size() >= 2
+                    && request.resource.data.prizes.size() <= 12
+                    && freshOp(request.resource.data.op)
+                    && opAfter(request.resource.data.op).kind == 'admin';
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
