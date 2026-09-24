@@ -851,41 +851,8 @@
             });
         }
 
-        // Seeded Initial Timeline Posts with Likes and Comments
-        let TIMELINE_POSTS = [
-            {
-                id: 'post_1',
-                authorId: 'lu',
-                authorName: 'Lu',
-                authorRole: 'ADMIN',
-                authorAvatarType: 'emoji',
-                authorAvatarEmoji: '👑',
-                authorAvatarImg: '',
-                content: 'ยินดีต้อนรับสมาชิก Love Roulette ทุกท่านสู่พื้นที่แห่งความโรแมนติก ขอให้ทุกคนได้พบเจอกับเรื่องราวดีๆ และมิตรภาพที่น่าประทับใจนะคะ ✨🌸',
-                image: '',
-                feeling: '💖 กำลังมีความสุข',
-                timestamp: 'เมื่อ 2 ชั่วโมงที่แล้ว',
-                likes: ['faye', 'bac', 'beam'],
-                comments: [
-                    { id: 'c_1', authorId: 'faye', authorName: 'Faye', text: 'ยินดีที่ได้รู้จักทุกคนค่ะ ฝากเนื้อฝากตัวด้วยนะคะ 💖', timestamp: '1 ชั่วโมงที่แล้ว' }
-                ]
-            },
-            {
-                id: 'post_2',
-                authorId: 'faye',
-                authorName: 'Faye',
-                authorRole: 'MEMBER',
-                authorAvatarType: 'emoji',
-                authorAvatarEmoji: '🌸',
-                authorAvatarImg: '',
-                content: 'กาแฟอุ่นๆ ยามบ่าย กับเพลงโปรดสักเพลง แค่นี้ก็ทำให้วันนี้เป็นวันที่ดีได้แล้ว ☕✨',
-                image: '',
-                feeling: '☕ อยากจิบกาแฟชิลล์ๆ',
-                timestamp: 'เมื่อ 30 นาทีที่แล้ว',
-                likes: ['lu', 'piink'],
-                comments: []
-            }
-        ];
+        // โพสต์ในไทม์ไลน์ (ยังเก็บเฉพาะในหน้านี้ — รีเฟรชแล้วหาย)
+        let TIMELINE_POSTS = [];
 
         // Global State Variables
         let currentUser = null;
