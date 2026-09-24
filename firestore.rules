@@ -222,6 +222,103 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ===== Timeline: posts + likes + comments (ดู timeline.js) =====
+    // feedOps/{id} = { user, by } ใบอนุญาต (อ่านไม่ได้) — by = key PIN ของ user เอง หรือของ Admin
+    function feedUser(id) {
+      return getAfter(/databases/$(database)/documents/feedOps/$(id)).data.user;
+    }
+    function freshFeed(id) {
+      return id is string
+        && !exists(/databases/$(database)/documents/feedOps/$(id))
+        && existsAfter(/databases/$(database)/documents/feedOps/$(id));
+    }
+    // เวลาจากเครื่องผู้ใช้ต้องใกล้เวลาจริง (±5 นาที)
+    function nowish(t) {
+      return t is number && t > request.time.toMillis() - 300000 && t < request.time.toMillis() + 300000;
+    }
+    function validPostBody(d) {
+      return d.content is string && d.content.size() <= 1000
+        && d.image is string && d.image.size() <= 200000
+        && d.feeling is string && d.feeling.size() <= 40
+        && (d.content.size() > 0 || d.image.size() > 0);
+    }
+
+    match /feedOps/{o} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly(['user', 'by'])
+                    && request.resource.data.user is string
+                    && request.resource.data.by is string
+                    && canAuthorize(request.resource.data.by, request.resource.data.user);
+      allow update, delete: if false;
+    }
+
+    match /posts/{p} {
+      allow read: if true;
+      // โพสต์ใหม่: ในนามเจ้าของใบอนุญาต
+      allow create: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
+                    && validPostBody(request.resource.data)
+                    && request.resource.data.edited == false
+                    && request.resource.data.deleted == false
+                    && nowish(request.resource.data.createdAt)
+                    && request.resource.data.updatedAt == request.resource.data.createdAt
+                    && freshFeed(request.resource.data.edit)
+                    && feedUser(request.resource.data.edit) == request.resource.data.authorId;
+      // แก้ไข / ลบ (deleted: true): เจ้าของโพสต์ หรือ Admin — เจ้าของและเวลาสร้างเปลี่ยนไม่ได้
+      allow update: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
+                    && resource.data.deleted == false
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.edited is bool
+                    && request.resource.data.deleted is bool
+                    && validPostBody(request.resource.data)
+                    && nowish(request.resource.data.updatedAt)
+                    && freshFeed(request.resource.data.edit)
+                    && feedUser(request.resource.data.edit) == resource.data.authorId;
+      allow delete: if false;
+
+      // ถูกใจ: doc id = ผู้กด
+      match /likes/{u} {
+        allow create, update: if request.resource.data.keys().hasOnly(['on', 'at', 'edit'])
+                    && request.resource.data.on is bool
+                    && nowish(request.resource.data.at)
+                    && freshFeed(request.resource.data.edit)
+                    && feedUser(request.resource.data.edit) == u
+                    && exists(/databases/$(database)/documents/posts/$(p));
+        allow delete: if false;
+      }
+
+      match /comments/{c} {
+        allow create: if request.resource.data.keys().hasOnly(['authorId', 'text', 'createdAt', 'deleted', 'edit'])
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 300
+                    && request.resource.data.deleted == false
+                    && nowish(request.resource.data.createdAt)
+                    && freshFeed(request.resource.data.edit)
+                    && feedUser(request.resource.data.edit) == request.resource.data.authorId
+                    && exists(/databases/$(database)/documents/posts/$(p));
+        // ลบความคิดเห็น: ผู้เขียน เจ้าของโพสต์ หรือ Admin — แก้ข้อความไม่ได้
+        allow update: if request.resource.data.keys().hasOnly(['authorId', 'text', 'createdAt', 'deleted', 'edit'])
+                    && resource.data.deleted == false
+                    && request.resource.data.deleted == true
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.text == resource.data.text
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && freshFeed(request.resource.data.edit)
+                    && (feedUser(request.resource.data.edit) == resource.data.authorId
+                        || feedUser(request.resource.data.edit) == get(/databases/$(database)/documents/posts/$(p)).data.authorId);
+        allow delete: if false;
+      }
+    }
+
+    // อ่านถูกใจ / ความคิดเห็นของทุกโพสต์ในครั้งเดียว (collection group)
+    match /{path=**}/likes/{u} {
+      allow read: if true;
+    }
+    match /{path=**}/comments/{c} {
+      allow read: if true;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

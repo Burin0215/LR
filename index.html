@@ -12,6 +12,7 @@
     <script src="auth.js"></script>
     <script src="profile.js"></script>
     <script src="inventory.js"></script>
+    <script src="timeline.js"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -132,6 +133,11 @@
             -webkit-backdrop-filter: blur(20px);
         }
 
+        /* จอเล็กมาก: แท็บเมนูแสดงเฉพาะข้อความ */
+        @media (max-width: 359px) {
+            #profileView nav i { display: none; }
+        }
+
         .crisp-img {
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
@@ -145,7 +151,7 @@
     <!-- LANDING VIEW CONTAINER (VISIBLE WHEN LOGGED OUT) -->
     <div id="landingView" class="flex flex-col min-h-screen relative z-10">
         <!-- Anchored Header (relative, stays at top) -->
-        <header class="relative z-40 border-b border-pink-300/60 bg-pink-100/90 backdrop-blur-md px-4 lg:px-8 py-4 shadow-xs">
+        <header class="relative z-40 border-b border-pink-300/60 bg-pink-100/90 backdrop-blur-md px-4 sm:px-6 lg:px-10 py-4 sm:py-5 shadow-xs">
             <div class="max-w-7xl mx-auto flex items-center justify-between">
                 <a href="#" class="flex items-center gap-2 sm:gap-3 group min-w-0">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 via-rose-400 to-amber-300 p-0.5 shadow-md shadow-pink-200 group-hover:scale-105 transition-transform">
@@ -159,9 +165,6 @@
                 </a>
 
                 <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <button onclick="toggleAudio()" class="w-9 h-9 rounded-full glass-card hover:border-pink-300 flex items-center justify-center text-pink-600 hover:text-amber-600 transition-all shadow-sm" title="สลับเสียงบรรยากาศ">
-                        <i id="landingSoundIcon" class="fa-solid fa-volume-high text-xs"></i>
-                    </button>
                     <button onclick="openLoginModal()" class="px-3 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap">
                         <i class="fa-solid fa-right-to-bracket text-xs"></i><span class="hidden min-[360px]:inline">เข้าสู่ระบบ</span>
                     </button>
@@ -216,7 +219,7 @@
     <!-- MEMBER PORTAL CONTAINER (VISIBLE WHEN LOGGED IN) -->
     <div id="profileView" class="hidden flex-col min-h-screen relative z-10">
         <!-- Anchored Header (relative, stays anchored at top, not scrolling down) -->
-        <header class="relative z-40 bg-gradient-to-r from-pink-100 via-rose-100 to-pink-200 text-stone-800 shadow-xs border-b border-pink-300/60 px-4 lg:px-8 py-3.5 backdrop-blur-md">
+        <header class="relative z-40 bg-gradient-to-r from-pink-100 via-rose-100 to-pink-200 text-stone-800 shadow-xs border-b border-pink-300/60 px-4 sm:px-6 lg:px-10 py-4 sm:py-5 backdrop-blur-md">
             <div class="max-w-7xl mx-auto flex items-center justify-between gap-2 relative">
                 <!-- Brand Logo -->
                 <div class="flex items-center gap-3 shrink-0">
@@ -230,22 +233,22 @@
                     </div>
                 </div>
 
-                <!-- Sticky Note Nav Tabs (Order: Timeline -> Community -> Profile) -->
-                <nav class="absolute left-3 min-[360px]:left-4 sm:left-8 -bottom-10 flex items-end gap-1.5 min-[360px]:gap-2 sm:gap-3 z-50 pointer-events-auto">
+                <!-- Sticky Note Nav Tabs (Order: Timeline -> Community -> Profile) — อยู่กึ่งกลาง กว้างเท่ากัน -->
+                <nav class="absolute left-1/2 -translate-x-1/2 -bottom-10 flex items-end gap-1.5 min-[360px]:gap-2 sm:gap-3 z-50 pointer-events-auto">
                     <!-- Tab 1: Timeline -->
-                    <button id="navTimelineBtn" onclick="switchMainTab('timeline')" class="relative px-3 min-[360px]:px-4 sm:px-5 py-2.5 rounded-b-2xl font-semibold text-xs transition-all duration-300 shadow-md flex items-center gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1">
+                    <button id="navTimelineBtn" onclick="switchMainTab('timeline')" class="relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-semibold text-xs transition-all duration-300 shadow-md flex items-center gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1">
                         <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-rose-200/90 rounded-xs shadow-xs border border-rose-300/60 rotate-[-1deg]"></span>
                         <i class="fa-solid fa-newspaper text-xs text-white"></i>
                         <span>Timeline</span>
                     </button>
                     <!-- Tab 2: Community -->
-                    <button id="navCommunityBtn" onclick="switchMainTab('community')" class="relative px-3 min-[360px]:px-4 sm:px-5 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
+                    <button id="navCommunityBtn" onclick="switchMainTab('community')" class="relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
                         <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-pink-200/80 rounded-xs shadow-xs border border-pink-300/60 rotate-[2deg]"></span>
                         <i id="navCommunityIcon" class="fa-solid fa-users text-xs text-rose-500"></i>
-                        <span id="navCommunityText" class="max-w-[120px] truncate">Community</span>
+                        <span id="navCommunityText" class="truncate">Community</span>
                     </button>
                     <!-- Tab 3: Profile -->
-                    <button id="navProfileBtn" onclick="switchMainTab('profile')" class="relative px-3 min-[360px]:px-4 sm:px-5 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
+                    <button id="navProfileBtn" onclick="switchMainTab('profile')" class="relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
                         <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-amber-200/90 rounded-xs shadow-xs border border-amber-300/60 rotate-[-1deg]"></span>
                         <i class="fa-solid fa-user-heart text-xs text-rose-500"></i>
                         <span>Profile</span>
@@ -254,11 +257,7 @@
 
                 <!-- User Info & Action Controls -->
                 <div class="flex items-center gap-3 sm:gap-4 shrink-0">
-                    <button onclick="toggleAudio()" class="w-8 h-8 rounded-full bg-white/80 hover:bg-white border border-pink-300 flex items-center justify-center text-pink-600 hover:text-amber-600 transition-all text-xs shadow-sm" title="เสียงบรรยากาศ">
-                        <i id="portalSoundIcon" class="fa-solid fa-volume-high"></i>
-                    </button>
-
-                    <div class="flex items-center gap-2 pl-2 sm:pl-3 border-l border-pink-300/80">
+                    <div class="flex items-center gap-2 sm:gap-2.5">
                         <div class="flex items-center gap-2 bg-white/90 border border-pink-300 rounded-full py-1 px-2.5 shadow-sm">
                             <div id="headerProfileAvatarContainer"></div>
                             <span id="headerProfileName" class="text-xs font-semibold text-stone-800"></span>
@@ -290,7 +289,7 @@
 
                     <!-- Post Text Input -->
                     <div>
-                        <textarea id="timelinePostInput" rows="3" placeholder="วันนี้คุณมีความรู้สึกหรือเรื่องราวอะไรอยากแบ่งปันไหม? 💖" class="w-full p-3.5 text-xs sm:text-sm bg-pink-50/40 hover:bg-pink-50/70 focus:bg-white border border-pink-200 rounded-2xl focus:border-pink-400 focus:ring-1 focus:ring-pink-300 outline-none text-stone-800 resize-none transition-all placeholder:text-stone-400"></textarea>
+                        <textarea id="timelinePostInput" rows="3" maxlength="1000" placeholder="วันนี้คุณมีความรู้สึกหรือเรื่องราวอะไรอยากแบ่งปันไหม? 💖" class="w-full p-3.5 text-xs sm:text-sm bg-pink-50/40 hover:bg-pink-50/70 focus:bg-white border border-pink-200 rounded-2xl focus:border-pink-400 focus:ring-1 focus:ring-pink-300 outline-none text-stone-800 resize-none transition-all placeholder:text-stone-400"></textarea>
                     </div>
 
                     <!-- Uploaded Image Preview (If attached) -->
@@ -327,7 +326,7 @@
                         </div>
 
                         <!-- Submit Post Button -->
-                        <button onclick="publishTimelinePost()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
+                        <button id="timelinePublishBtn" onclick="publishTimelinePost()" class="disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
                             <i class="fa-solid fa-paper-plane text-[11px]"></i>
                             <span>โพสต์</span>
                         </button>
@@ -656,6 +655,20 @@
         </div>
     </div>
 
+    <!-- 6.3 CONFIRM MODAL (ใช้แทน confirm() ของเบราว์เซอร์) -->
+    <div id="confirmModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[55] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-card bg-white/95 rounded-3xl p-6 max-w-xs w-full border border-pink-300/80 shadow-2xl relative transform scale-95 transition-all duration-300 text-center space-y-4" id="confirmModalContainer">
+            <div class="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center text-2xl mx-auto shadow-sm">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 id="confirmModalText" class="text-base font-bold text-stone-800"></h3>
+            <div class="flex items-center gap-3">
+                <button onclick="resolveConfirm(false)" class="flex-1 py-2.5 border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-semibold rounded-xl transition-all cursor-pointer">ยกเลิก</button>
+                <button id="confirmModalOk" onclick="resolveConfirm(true)" class="flex-1 py-2.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold rounded-xl transition-all shadow-md cursor-pointer">ลบ</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 6.4 GIFT ROSE MODAL (MEMBER → MEMBER, ไม่แสดงตัวตน, ใช้ดอกกุหลาบที่ใช้ได้) -->
     <div id="giftModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
         <div class="glass-card bg-white/95 rounded-3xl p-6 sm:p-7 max-w-sm w-full border border-pink-300/80 shadow-2xl relative transform scale-95 transition-all duration-300 text-center space-y-4" id="giftModalContainer">
@@ -811,17 +824,6 @@
     </div>
 
     <script>
-        // Audio Toggle State
-        let soundEnabled = true;
-        function toggleAudio() {
-            soundEnabled = !soundEnabled;
-            const landingIcon = document.getElementById('landingSoundIcon');
-            const portalIcon = document.getElementById('portalSoundIcon');
-            const iconClass = soundEnabled ? 'fa-solid fa-volume-high text-xs' : 'fa-solid fa-volume-xmark text-xs';
-            if (landingIcon) landingIcon.className = iconClass;
-            if (portalIcon) portalIcon.className = iconClass;
-        }
-
         // รายชื่อผู้ใช้มาจาก ACCOUNTS ใน auth.js — PIN ตรวจกับ Firestore (ไม่มีในหน้าเว็บ)
         // bio / ความสนใจ / รูปโปรไฟล์ มาจาก profiles ใน Firestore (แก้ได้ที่หน้าโปรไฟล์ของคลังดอกกุหลาบ)
         const AVATAR_EMOJIS = {
@@ -851,8 +853,9 @@
             });
         }
 
-        // โพสต์ในไทม์ไลน์ (ยังเก็บเฉพาะในหน้านี้ — รีเฟรชแล้วหาย)
+        // โพสต์ในไทม์ไลน์ — มาจาก Firestore (timeline.js) อัปเดตอัตโนมัติ
         let TIMELINE_POSTS = [];
+        let timelineLoaded = false;
 
         // Global State Variables
         let currentUser = null;
@@ -875,7 +878,7 @@
         function renderAvatarHTML(user, sizeClass = "w-10 h-10") {
             if (!user) return `<div class="${sizeClass} rounded-full bg-pink-200 flex items-center justify-center text-sm">🌸</div>`;
             if (user.avatarType === 'image' && user.avatarImg) {
-                return `<img src="${user.avatarImg}" alt="${user.name}" class="${sizeClass} rounded-full object-cover border border-pink-300 shadow-xs">`;
+                return `<img src="${escapeHtml(user.avatarImg)}" alt="${escapeHtml(user.name)}" class="${sizeClass} rounded-full object-cover border border-pink-300 shadow-xs">`;
             } else {
                 return `<div class="${sizeClass} rounded-full bg-gradient-to-tr from-pink-200 via-rose-100 to-amber-100 border border-pink-300 flex items-center justify-center text-base sm:text-lg shadow-xs">
                     <span>${user.avatarEmoji || '🌸'}</span>
@@ -1119,8 +1122,8 @@
             const navTimelineBtn = document.getElementById('navTimelineBtn');
             const navCommunityBtn = document.getElementById('navCommunityBtn');
 
-            const activeTabClass = 'relative px-3 min-[360px]:px-4 sm:px-5 py-2.5 rounded-b-2xl font-semibold text-xs transition-all duration-300 shadow-md flex items-center gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1';
-            const inactiveTabClass = 'relative px-3 min-[360px]:px-4 sm:px-5 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5';
+            const activeTabClass = 'relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-semibold text-xs transition-all duration-300 shadow-md flex items-center gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1';
+            const inactiveTabClass = 'relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5';
 
             if (profileSec) profileSec.classList.add('hidden');
             if (timelineSec) timelineSec.classList.add('hidden');
@@ -1157,20 +1160,103 @@
             }
         }
 
-        function handleTimelineImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    uploadedTimelineImageDataUrl = e.target.result;
-                    const preview = document.getElementById('timelineImagePreview');
-                    const container = document.getElementById('timelineImagePreviewContainer');
-                    if (preview && container) {
-                        preview.src = uploadedTimelineImageDataUrl;
-                        container.classList.remove('hidden');
-                    }
-                };
-                reader.readAsDataURL(file);
+        // ===== แจ้งเตือนสั้น ๆ มุมล่างของจอ =====
+        function showToast(msg) {
+            let el = document.getElementById('landingToast');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'landingToast';
+                el.className = 'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm z-[60] bg-stone-800 text-white text-xs px-4 py-3 rounded-2xl shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none';
+                document.body.appendChild(el);
+            }
+            el.textContent = msg;
+            el.classList.remove('opacity-0');
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => el.classList.add('opacity-0'), 3500);
+        }
+
+        // key PIN ของคนที่ login อยู่ (ใช้ยืนยันการเขียนทุกครั้ง)
+        function myFeedKey() {
+            const session = currentSession();
+            if (!currentUser || !session || !session.key || accountId(session.name) !== currentUser.id) {
+                showToast('กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้ง');
+                return null;
+            }
+            return session.key;
+        }
+
+        // askConfirm('ข้อความ') → Promise<boolean>
+        let confirmResolver = null;
+        function askConfirm(text, okLabel = 'ลบ') {
+            if (confirmResolver) confirmResolver(false);
+            document.getElementById('confirmModalText').textContent = text;
+            document.getElementById('confirmModalOk').textContent = okLabel;
+            const modal = document.getElementById('confirmModal');
+            const container = document.getElementById('confirmModalContainer');
+            modal.classList.remove('pointer-events-none', 'opacity-0');
+            modal.classList.add('opacity-100');
+            container.classList.remove('scale-95');
+            container.classList.add('scale-100');
+            return new Promise(resolve => { confirmResolver = resolve; });
+        }
+        function resolveConfirm(ok) {
+            const modal = document.getElementById('confirmModal');
+            const container = document.getElementById('confirmModalContainer');
+            modal.classList.add('pointer-events-none', 'opacity-0');
+            modal.classList.remove('opacity-100');
+            container.classList.remove('scale-100');
+            container.classList.add('scale-95');
+            if (confirmResolver) { const r = confirmResolver; confirmResolver = null; r(ok); }
+        }
+
+        function feedErrorText(err) {
+            if (err && err.code === 'permission-denied') return 'บันทึกไม่ได้ — PIN อาจถูกเปลี่ยน กรุณาออกจากระบบแล้วเข้าใหม่';
+            return 'บันทึกไม่สำเร็จ: ' + (err && err.message ? err.message : err);
+        }
+
+        function timeAgo(ms) {
+            const diff = Math.max(0, Date.now() - ms) / 1000;
+            if (diff < 60) return 'เมื่อสักครู่';
+            if (diff < 3600) return `${Math.floor(diff / 60)} นาทีที่แล้ว`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} ชั่วโมงที่แล้ว`;
+            if (diff < 7 * 86400) return `${Math.floor(diff / 86400)} วันที่แล้ว`;
+            return new Date(ms).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // ฟังไทม์ไลน์ — ถ้าการเชื่อมต่อหลุด/ถูกปฏิเสธ ลองใหม่อัตโนมัติ
+        let timelineUnsub = null;
+        let timelineRetry = null;
+        function startTimelineSync() {
+            if (timelineUnsub) timelineUnsub();
+            try {
+                timelineUnsub = subscribeTimeline(posts => {
+                    TIMELINE_POSTS = posts;
+                    timelineLoaded = true;
+                    if (currentUser) renderTimeline();
+                }, err => {
+                    console.warn(err);
+                    clearTimeout(timelineRetry);
+                    timelineRetry = setTimeout(startTimelineSync, 10000);
+                });
+            } catch (err) { console.warn(err); }
+        }
+
+        // รูปในโพสต์: ย่อเป็น JPEG ก่อนเก็บ (ขนาดเดียวกับรูปโปรไฟล์)
+        async function handleTimelineImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            try {
+                uploadedTimelineImageDataUrl = await compressImage(file, 1080);
+            } catch (err) {
+                showToast(err && err.message ? err.message : String(err));
+                return;
+            }
+            const preview = document.getElementById('timelineImagePreview');
+            const container = document.getElementById('timelineImagePreviewContainer');
+            if (preview && container) {
+                preview.src = uploadedTimelineImageDataUrl;
+                container.classList.remove('hidden');
             }
         }
 
@@ -1184,8 +1270,9 @@
             if (fileInput) fileInput.value = '';
         }
 
-        function publishTimelinePost() {
-            if (!currentUser) return;
+        let timelinePublishing = false;
+        async function publishTimelinePost() {
+            if (!currentUser || timelinePublishing) return;
             const input = document.getElementById('timelinePostInput');
             const feelingSelect = document.getElementById('timelineFeelingSelect');
             const content = (input ? input.value : '').trim();
@@ -1194,87 +1281,95 @@
                 if (input) input.focus();
                 return;
             }
+            const key = myFeedKey();
+            if (!key) return;
 
-            const newPost = {
-                id: 'post_' + Date.now(),
-                authorId: currentUser.id,
-                authorName: currentUser.name,
-                authorRole: currentUser.role,
-                authorAvatarType: currentUser.avatarType,
-                authorAvatarEmoji: currentUser.avatarEmoji,
-                authorAvatarImg: currentUser.avatarImg,
-                content: content,
-                image: uploadedTimelineImageDataUrl || '',
-                feeling: feelingSelect ? feelingSelect.value : '',
-                timestamp: 'เมื่อสักครู่นี้',
-                likes: [],
-                comments: []
-            };
-
-            TIMELINE_POSTS.unshift(newPost);
-
-            // Reset inputs
-            if (input) input.value = '';
-            if (feelingSelect) feelingSelect.value = '';
-            removeTimelineImageAttachment();
-
-            renderTimeline();
-            triggerCelebration();
+            const btn = document.getElementById('timelinePublishBtn');
+            timelinePublishing = true;
+            if (btn) btn.disabled = true;
+            try {
+                await createPost(currentUser.id, key, {
+                    content, image: uploadedTimelineImageDataUrl, feeling: feelingSelect ? feelingSelect.value : ''
+                });
+                if (input) input.value = '';
+                if (feelingSelect) feelingSelect.value = '';
+                removeTimelineImageAttachment();
+                triggerCelebration();
+            } catch (err) {
+                showToast(feedErrorText(err));
+            } finally {
+                timelinePublishing = false;
+                if (btn) btn.disabled = false;
+            }
         }
 
-        function toggleTimelineLike(postId) {
+        async function toggleTimelineLike(postId) {
             if (!currentUser) return;
             const post = TIMELINE_POSTS.find(p => p.id === postId);
             if (!post) return;
-
-            if (!post.likes) post.likes = [];
-            const idx = post.likes.indexOf(currentUser.id);
-            if (idx > -1) {
-                post.likes.splice(idx, 1);
-            } else {
-                post.likes.push(currentUser.id);
+            const key = myFeedKey();
+            if (!key) return;
+            try {
+                await setPostLike(post.id, currentUser.id, key, !post.likes.includes(currentUser.id));
+            } catch (err) {
+                showToast(feedErrorText(err));
             }
-
-            renderTimeline();
         }
 
-        function submitTimelineComment(postId) {
+        async function submitTimelineComment(postId) {
             if (!currentUser) return;
             const input = document.getElementById(`commentInput_${postId}`);
-            if (!input) return;
+            if (!input || input.disabled) return;
             const text = input.value.trim();
             if (!text) return;
-
             const post = TIMELINE_POSTS.find(p => p.id === postId);
             if (!post) return;
+            const key = myFeedKey();
+            if (!key) return;
 
-            if (!post.comments) post.comments = [];
-            post.comments.push({
-                id: 'c_' + Date.now(),
-                authorId: currentUser.id,
-                authorName: currentUser.name,
-                authorAvatarType: currentUser.avatarType,
-                authorAvatarEmoji: currentUser.avatarEmoji,
-                authorAvatarImg: currentUser.avatarImg,
-                text: text,
-                timestamp: 'เมื่อสักครู่'
-            });
-
-            input.value = '';
-            renderTimeline();
+            input.disabled = true;
+            try {
+                await addPostComment(post.id, currentUser.id, key, text);
+                input.value = '';
+                pendingCommentValues[postId] = '';
+            } catch (err) {
+                showToast(feedErrorText(err));
+            } finally {
+                const again = document.getElementById(`commentInput_${postId}`);
+                if (again) { again.disabled = false; again.focus(); }
+            }
         }
 
-        function deleteTimelinePost(postId) {
+        async function deleteTimelineComment(postId, commentId) {
+            const post = TIMELINE_POSTS.find(p => p.id === postId);
+            const comment = post && post.comments.find(c => c.id === commentId);
+            if (!currentUser || !comment) return;
+            // ใบอนุญาตออกในนาม: ผู้เขียนเอง / เจ้าของโพสต์ / (Admin) ผู้เขียนความคิดเห็น
+            let asUser = null;
+            if (currentUser.id === comment.authorId || currentUser.id === post.authorId) asUser = currentUser.id;
+            else if (currentUser.role === 'ADMIN') asUser = comment.authorId;
+            if (!asUser || !(await askConfirm('ลบความคิดเห็นนี้?'))) return;
+            const key = myFeedKey();
+            if (!key) return;
+            try {
+                await deletePostComment(post.id, comment, asUser, key);
+            } catch (err) {
+                showToast(feedErrorText(err));
+            }
+        }
+
+        async function deleteTimelinePost(postId) {
             if (!currentUser) return;
             const post = TIMELINE_POSTS.find(p => p.id === postId);
             if (!post) return;
-
-            if (currentUser.id === post.authorId || currentUser.role === 'ADMIN') {
-                const idx = TIMELINE_POSTS.findIndex(p => p.id === postId);
-                if (idx > -1) {
-                    TIMELINE_POSTS.splice(idx, 1);
-                    renderTimeline();
-                }
+            if (currentUser.id !== post.authorId && currentUser.role !== 'ADMIN') return;
+            if (!(await askConfirm('ลบโพสต์นี้?'))) return;
+            const key = myFeedKey();
+            if (!key) return;
+            try {
+                await updatePost(post, key, { deleted: true });
+            } catch (err) {
+                showToast(feedErrorText(err));
             }
         }
 
@@ -1284,7 +1379,7 @@
         function openEditPostModal(postId) {
             const post = TIMELINE_POSTS.find(p => p.id === postId);
             if (!post) return;
-            if (!currentUser || (currentUser.id !== post.authorId && currentUser.role !== 'ADMIN')) return;
+            if (!currentUser || currentUser.id !== post.authorId) return;
 
             editingPostId = postId;
             editingPostImageDataUrl = post.image || '';
@@ -1329,20 +1424,21 @@
             editingPostImageDataUrl = '';
         }
 
-        function handleEditPostImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    editingPostImageDataUrl = e.target.result;
-                    const preview = document.getElementById('editPostImagePreview');
-                    const container = document.getElementById('editPostImagePreviewContainer');
-                    if (preview && container) {
-                        preview.src = editingPostImageDataUrl;
-                        container.classList.remove('hidden');
-                    }
-                };
-                reader.readAsDataURL(file);
+        async function handleEditPostImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            try {
+                editingPostImageDataUrl = await compressImage(file, 1080);
+            } catch (err) {
+                showToast(err && err.message ? err.message : String(err));
+                return;
+            }
+            const preview = document.getElementById('editPostImagePreview');
+            const container = document.getElementById('editPostImagePreviewContainer');
+            if (preview && container) {
+                preview.src = editingPostImageDataUrl;
+                container.classList.remove('hidden');
             }
         }
 
@@ -1356,7 +1452,7 @@
             if (fileInput) fileInput.value = '';
         }
 
-        function saveEditedPost() {
+        async function saveEditedPost() {
             if (!editingPostId) return;
             const post = TIMELINE_POSTS.find(p => p.id === editingPostId);
             if (!post) return;
@@ -1369,15 +1465,17 @@
                 if (textInput) textInput.focus();
                 return;
             }
-
-            post.content = newContent;
-            post.feeling = feelingSelect ? feelingSelect.value : '';
-            post.image = editingPostImageDataUrl || '';
-            post.isEdited = true;
-
-            closeEditPostModal();
-            renderTimeline();
-            triggerCelebration();
+            const key = myFeedKey();
+            if (!key) return;
+            try {
+                await updatePost(post, key, { body: {
+                    content: newContent, feeling: feelingSelect ? feelingSelect.value : '', image: editingPostImageDataUrl || ''
+                } });
+                closeEditPostModal();
+                triggerCelebration();
+            } catch (err) {
+                showToast(feedErrorText(err));
+            }
         }
 
         function getLikedByText(post) {
@@ -1388,7 +1486,7 @@
             const likerNames = post.likes.map(id => {
                 if (currentUser && id === currentUser.id) return 'คุณ';
                 const u = findUserById(id);
-                return u ? u.name : 'สมาชิก';
+                return escapeHtml(u ? u.name : 'สมาชิก');
             });
 
             if (likerNames.length === 1) {
@@ -1445,11 +1543,11 @@
                                 ${renderAvatarHTML(user, "w-9 h-9 shrink-0")}
                                 <div class="overflow-hidden text-left">
                                     <div class="flex items-center gap-1.5 flex-wrap">
-                                        <span class="text-xs font-bold text-stone-800 truncate">${user.name}</span>
+                                        <span class="text-xs font-bold text-stone-800 truncate">${escapeHtml(user.name)}</span>
                                         ${isMe ? '<span class="text-[9px] px-1.5 py-0.2 bg-rose-100 text-rose-600 rounded-full font-semibold">คุณ</span>' : ''}
                                         <span class="text-[9px] px-2 py-0.2 rounded-full ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/60' : 'bg-pink-100 text-pink-700 font-medium'} uppercase">${user.role}</span>
                                     </div>
-                                    <p class="text-[10px] text-stone-400 font-light truncate max-w-[180px]">${user.bio || ''}</p>
+                                    <p class="text-[10px] text-stone-400 font-light truncate max-w-[180px]">${escapeHtml(user.bio || '')}</p>
                                 </div>
                             </div>
                             <button onclick="closeLikesModal(); viewUserProfile('${user.id}')" class="px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-[11px] font-semibold transition-all shrink-0 border border-pink-200 shadow-2xs flex items-center gap-1 cursor-pointer">
@@ -1478,6 +1576,16 @@
             }
         }
 
+        function openPostImage(postId) {
+            const post = TIMELINE_POSTS.find(p => p.id === postId);
+            if (!post || !post.image) return;
+            const author = findUserById(post.authorId);
+            openDirectLightbox(post.image, author ? author.name : '', post.content || '');
+        }
+
+        // ข้อความที่กำลังพิมพ์ในช่องความคิดเห็น (คงไว้เมื่อไทม์ไลน์อัปเดตระหว่างพิมพ์)
+        const pendingCommentValues = {};
+
         function renderTimeline() {
             const feedContainer = document.getElementById('timelineFeedList');
             const composerAvatar = document.getElementById('timelineComposerAvatar');
@@ -1489,6 +1597,22 @@
 
             if (countText) countText.innerText = `${TIMELINE_POSTS.length} โพสต์`;
             if (!feedContainer) return;
+
+            // จำช่องความคิดเห็นที่กำลังพิมพ์ / โฟกัสอยู่
+            const active = document.activeElement;
+            const focusedId = active && active.id && active.id.startsWith('commentInput_') ? active.id : null;
+            const caret = focusedId ? active.selectionStart : null;
+            feedContainer.querySelectorAll('input[id^="commentInput_"]').forEach(el => {
+                pendingCommentValues[el.id.slice('commentInput_'.length)] = el.value;
+            });
+
+            if (!timelineLoaded) {
+                feedContainer.innerHTML = `
+                    <div class="glass-card bg-white/95 rounded-3xl p-10 text-center border border-pink-200 text-stone-400 text-xs">
+                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังโหลดไทม์ไลน์...
+                    </div>`;
+                return;
+            }
 
             if (TIMELINE_POSTS.length === 0) {
                 feedContainer.innerHTML = `
@@ -1502,15 +1626,9 @@
             }
 
             feedContainer.innerHTML = TIMELINE_POSTS.map(post => {
-                const author = findUserById(post.authorId) || {
-                    name: post.authorName,
-                    role: post.authorRole,
-                    avatarType: post.authorAvatarType,
-                    avatarEmoji: post.authorAvatarEmoji,
-                    avatarImg: post.authorAvatarImg
-                };
+                const author = findUserById(post.authorId) || { name: post.authorId, role: 'MEMBER', avatarType: 'emoji', avatarEmoji: '🌸' };
 
-                const isLiked = currentUser && post.likes && post.likes.includes(currentUser.id);
+                const isLiked = currentUser && post.likes.includes(currentUser.id);
                 const isAuthor = currentUser && (currentUser.id === post.authorId);
                 const canDelete = currentUser && (currentUser.id === post.authorId || currentUser.role === 'ADMIN');
 
@@ -1518,24 +1636,24 @@
                     <div class="glass-card bg-white/95 rounded-3xl p-5 sm:p-6 border border-pink-200/90 shadow-md space-y-4 transition-all">
                         <!-- Post Header -->
                         <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-3">
-                                <div class="cursor-pointer" onclick="viewUserProfile('${post.authorId}')">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="cursor-pointer shrink-0" onclick="viewUserProfile('${post.authorId}')">
                                     ${renderAvatarHTML(author, "w-11 h-11")}
                                 </div>
-                                <div class="space-y-0.5">
+                                <div class="space-y-0.5 min-w-0">
                                     <div class="flex items-center gap-1.5 flex-wrap">
-                                        <h5 class="text-sm font-bold text-stone-800 hover:text-pink-600 transition-colors cursor-pointer" onclick="viewUserProfile('${post.authorId}')">${post.authorName}</h5>
-                                        <span class="text-[9px] px-2 py-0.5 rounded-full ${post.authorRole === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/80' : 'bg-pink-100 text-pink-700 font-medium'} uppercase tracking-wider">${post.authorRole}</span>
+                                        <h5 class="text-sm font-bold text-stone-800 hover:text-pink-600 transition-colors cursor-pointer" onclick="viewUserProfile('${post.authorId}')">${escapeHtml(author.name)}</h5>
+                                        <span class="text-[9px] px-2 py-0.5 rounded-full ${author.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/80' : 'bg-pink-100 text-pink-700 font-medium'} uppercase tracking-wider">${author.role}</span>
                                     </div>
-                                    <div class="flex items-center gap-2 text-[10px] text-stone-400">
-                                        <span>${post.timestamp}</span>
-                                        ${post.isEdited ? '<span class="text-stone-400 italic">(แก้ไขแล้ว)</span>' : ''}
-                                        ${post.feeling ? `<span class="px-2 py-0.2 rounded-full bg-pink-50 border border-pink-200/80 text-pink-700 font-medium">${post.feeling}</span>` : ''}
+                                    <div class="flex items-center gap-2 text-[10px] text-stone-400 flex-wrap">
+                                        <span title="${escapeHtml(new Date(post.createdAt).toLocaleString('th-TH'))}">${timeAgo(post.createdAt)}</span>
+                                        ${post.edited ? '<span class="text-stone-400 italic">(แก้ไขแล้ว)</span>' : ''}
+                                        ${post.feeling ? `<span class="px-2 py-0.2 rounded-full bg-pink-50 border border-pink-200/80 text-pink-700 font-medium">${escapeHtml(post.feeling)}</span>` : ''}
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-1">
+                            <div class="flex items-center gap-1 shrink-0">
                                 ${isAuthor ? `
                                     <button onclick="openEditPostModal('${post.id}')" class="text-stone-300 hover:text-pink-600 hover:bg-pink-50 text-xs w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer" title="แก้ไขโพสต์">
                                         <i class="fa-solid fa-pen-to-square"></i>
@@ -1551,13 +1669,13 @@
 
                         <!-- Post Text -->
                         ${post.content ? `
-                            <p class="text-xs sm:text-sm text-stone-700 font-light leading-relaxed whitespace-pre-line">${post.content}</p>
+                            <p class="text-xs sm:text-sm text-stone-700 font-light leading-relaxed whitespace-pre-line break-words">${escapeHtml(post.content)}</p>
                         ` : ''}
 
                         <!-- Post Image (Full View Uncropped) -->
                         ${post.image ? `
-                            <div class="w-full bg-stone-50/70 rounded-2xl overflow-hidden border border-pink-100 p-2 flex items-center justify-center cursor-pointer group relative" onclick="openDirectLightbox('${post.image}', '${post.authorName}', '${(post.content || '').replace(/'/g, "\\'")}')" title="คลิกเพื่อดูรูปภาพขนาดเต็ม">
-                                <img src="${post.image}" alt="Post Image" class="max-h-[380px] w-auto object-contain rounded-xl shadow-2xs group-hover:scale-[1.01] transition-transform duration-300">
+                            <div class="w-full bg-stone-50/70 rounded-2xl overflow-hidden border border-pink-100 p-2 flex items-center justify-center cursor-pointer group relative" onclick="openPostImage('${post.id}')" title="คลิกเพื่อดูรูปภาพขนาดเต็ม">
+                                <img src="${escapeHtml(post.image)}" alt="Post Image" class="max-h-[380px] w-auto object-contain rounded-xl shadow-2xs group-hover:scale-[1.01] transition-transform duration-300">
                                 <span class="absolute bottom-4 right-4 bg-stone-900/75 hover:bg-rose-600 text-white text-[10px] font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm shadow-xs transition-colors">
                                     <i class="fa-solid fa-expand text-[9px]"></i> ดูภาพเต็ม
                                 </span>
@@ -1565,23 +1683,23 @@
                         ` : ''}
 
                         <!-- Post Interaction Summary (Likes Stack & Comment Count) -->
-                        <div class="flex items-center justify-between pt-2 border-t border-pink-100 text-xs text-stone-500">
-                            <div onclick="openLikesModal('${post.id}')" class="flex items-center gap-2 cursor-pointer group hover:opacity-85 transition-opacity" title="คลิกเพื่อดูสมาชิกที่ถูกใจโพสต์นี้">
+                        <div class="flex items-center justify-between gap-2 pt-2 border-t border-pink-100 text-xs text-stone-500">
+                            <div onclick="openLikesModal('${post.id}')" class="flex items-center gap-2 cursor-pointer group hover:opacity-85 transition-opacity min-w-0" title="คลิกเพื่อดูสมาชิกที่ถูกใจโพสต์นี้">
                                 <span class="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] shadow-xs shrink-0 group-hover:scale-110 transition-transform">
                                     <i class="fa-solid fa-heart"></i>
                                 </span>
                                 ${renderLikersAvatarStack(post)}
-                                <span class="text-[11px] text-stone-600 group-hover:text-rose-600 transition-colors select-none">
+                                <span class="text-[11px] text-stone-600 group-hover:text-rose-600 transition-colors select-none truncate">
                                     ${getLikedByText(post)}
                                 </span>
                             </div>
-                            <span class="text-[11px] text-stone-400 font-light select-none">${(post.comments || []).length} ความคิดเห็น</span>
+                            <span class="text-[11px] text-stone-400 font-light select-none shrink-0">${post.comments.length} ความคิดเห็น</span>
                         </div>
 
                         <!-- Action Buttons (Like / Comment) -->
                         <div class="grid grid-cols-2 gap-2 pt-1 border-t border-pink-100/70">
                             <button onclick="toggleTimelineLike('${post.id}')" class="py-2 rounded-xl hover:bg-pink-50 text-xs font-semibold flex items-center justify-center gap-2 transition-all ${isLiked ? 'text-rose-600 bg-pink-50/80' : 'text-stone-600'} cursor-pointer">
-                                <i class="fa-solid fa-heart text-xs ${isLiked ? 'text-rose-500 animate-bounce' : 'text-stone-400'}"></i>
+                                <i class="fa-solid fa-heart text-xs ${isLiked ? 'text-rose-500' : 'text-stone-400'}"></i>
                                 <span>${isLiked ? 'ถูกใจแล้ว' : 'ส่งใจ'}</span>
                             </button>
                             <button onclick="document.getElementById('commentInput_${post.id}').focus()" class="py-2 rounded-xl hover:bg-pink-50 text-stone-600 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer">
@@ -1598,7 +1716,7 @@
                                     ${currentUser ? renderAvatarHTML(currentUser, "w-7 h-7") : ''}
                                 </div>
                                 <div class="flex-1 relative">
-                                    <input type="text" id="commentInput_${post.id}" placeholder="เขียนความคิดเห็น..." onkeyup="if(event.key === 'Enter') submitTimelineComment('${post.id}')" class="w-full pl-3 pr-9 py-2 text-xs bg-white border border-pink-200 rounded-full focus:border-pink-400 focus:ring-1 focus:ring-pink-200 outline-none text-stone-800 shadow-2xs">
+                                    <input type="text" id="commentInput_${post.id}" maxlength="300" placeholder="เขียนความคิดเห็น..." value="${escapeHtml(pendingCommentValues[post.id] || '')}" oninput="pendingCommentValues['${post.id}'] = this.value" onkeyup="if(event.key === 'Enter') submitTimelineComment('${post.id}')" class="w-full pl-3 pr-9 py-2 text-xs bg-white border border-pink-200 rounded-full focus:border-pink-400 focus:ring-1 focus:ring-pink-200 outline-none text-stone-800 shadow-2xs">
                                     <button onclick="submitTimelineComment('${post.id}')" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] transition-all cursor-pointer">
                                         <i class="fa-solid fa-arrow-up"></i>
                                     </button>
@@ -1606,26 +1724,25 @@
                             </div>
 
                             <!-- Comment List -->
-                            ${(post.comments && post.comments.length > 0) ? `
+                            ${post.comments.length > 0 ? `
                                 <div class="space-y-2 pt-1 max-h-48 overflow-y-auto custom-scroll pr-1">
                                     ${post.comments.map(c => {
-                                        const cAuthor = findUserById(c.authorId) || {
-                                            name: c.authorName,
-                                            avatarType: c.authorAvatarType,
-                                            avatarEmoji: c.authorAvatarEmoji,
-                                            avatarImg: c.authorAvatarImg
-                                        };
+                                        const cAuthor = findUserById(c.authorId) || { name: c.authorId, avatarType: 'emoji', avatarEmoji: '🌸' };
+                                        const canDeleteComment = currentUser && (currentUser.id === c.authorId || currentUser.id === post.authorId || currentUser.role === 'ADMIN');
                                         return `
                                             <div class="flex items-start gap-2 text-left">
-                                                <div class="shrink-0 pt-0.5">
+                                                <div class="shrink-0 pt-0.5 cursor-pointer" onclick="viewUserProfile('${c.authorId}')">
                                                     ${renderAvatarHTML(cAuthor, "w-6 h-6")}
                                                 </div>
-                                                <div class="bg-white border border-pink-100/80 rounded-2xl rounded-tl-xs px-3 py-1.5 shadow-2xs flex-1">
+                                                <div class="bg-white border border-pink-100/80 rounded-2xl rounded-tl-xs px-3 py-1.5 shadow-2xs flex-1 min-w-0">
                                                     <div class="flex items-center justify-between gap-1">
-                                                        <span class="text-[11px] font-bold text-stone-800">${c.authorName}</span>
-                                                        <span class="text-[9px] text-stone-400">${c.timestamp || ''}</span>
+                                                        <span class="text-[11px] font-bold text-stone-800">${escapeHtml(cAuthor.name)}</span>
+                                                        <span class="flex items-center gap-1.5 text-[9px] text-stone-400 shrink-0">
+                                                            ${timeAgo(c.createdAt)}
+                                                            ${canDeleteComment ? `<button onclick="deleteTimelineComment('${post.id}', '${c.id}')" class="text-stone-300 hover:text-rose-500 cursor-pointer" title="ลบความคิดเห็น"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                                                        </span>
                                                     </div>
-                                                    <p class="text-xs text-stone-700 font-light leading-snug">${c.text}</p>
+                                                    <p class="text-xs text-stone-700 font-light leading-snug break-words">${escapeHtml(c.text)}</p>
                                                 </div>
                                             </div>
                                         `;
@@ -1636,6 +1753,11 @@
                     </div>
                 `;
             }).join('');
+
+            if (focusedId) {
+                const el = document.getElementById(focusedId);
+                if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} }
+            }
         }
 
         function renderDashboardMembers() {
@@ -1651,7 +1773,7 @@
                     <div class="space-y-1 w-full">
                         <p class="text-sm font-bold text-stone-800 group-hover:text-pink-600 transition-colors truncate">${user.name}</p>
                         <span class="inline-block text-[10px] px-2.5 py-0.5 rounded-full ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 border border-amber-300 font-bold' : 'bg-pink-100 text-pink-600 font-medium'} uppercase tracking-wider">${user.role}</span>
-                        <p class="text-[11px] text-stone-500 font-light italic line-clamp-2 px-1 pt-1">${user.bio || ''}</p>
+                        <p class="text-[11px] text-stone-500 font-light italic line-clamp-2 px-1 pt-1">${escapeHtml(user.bio || '')}</p>
                     </div>
                     <div class="w-full pt-1" onclick="event.stopPropagation()">
                         <button onclick="viewUserProfile('${user.id}')" class="w-full py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-xl text-xs font-semibold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
@@ -2744,10 +2866,13 @@
                     if (!currentUser) return;
                     renderHeaderProfile();
                     renderOwnProfile();
+                    renderTimeline();
                     if (viewedCommunityUser) renderCommunityMemberDetail(viewedCommunityUser);
                     else renderDashboardMembers();
                 }, () => {});
             } catch (err) { console.warn(err); }
+
+            startTimelineSync();
 
             // login ไว้แล้ว (เช่น กลับมาจากคลังดอกกุหลาบ) → เข้าหน้าสมาชิกเลย
             const session = currentSession();
@@ -2768,6 +2893,7 @@
                     closeLikesModal();
                     closeRequestModal();
                     closeGiftModal();
+                    if (confirmResolver) resolveConfirm(false);
                 }
             });
         };
