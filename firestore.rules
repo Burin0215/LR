@@ -139,6 +139,9 @@ service cloud.firestore {
             && ((u == p.from && n.rose == o.rose - p.amount && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
              || (u == p.to && n.received == o.received + p.amount && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
                  && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
+        // Request 1:1: หักดอกกุหลาบที่มีอยู่ของผู้ขอ 5 ดอกพอดี อย่างอื่นไม่เปลี่ยน
+        || (p.kind == 'request' && u == p.from
+            && n.rose == o.rose - 5 && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
         || (p.kind == 'spin' && u == p.user && p.prize is int && o.coin >= 20 && n.received == o.received
             && n.coin == o.coin - 20 + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'coin')
             && n.rose == o.rose + bonus(get(/databases/$(database)/documents/config/roulette).data.prizes[p.prize], 'rose')
@@ -156,7 +159,15 @@ service cloud.firestore {
             && canAuthorize(request.resource.data.by, request.resource.data.from))
         || (request.resource.data.kind == 'spin'
             && request.resource.data.keys().hasOnly(['kind', 'by', 'user', 'prize'])
-            && canAuthorize(request.resource.data.by, request.resource.data.user)));
+            && canAuthorize(request.resource.data.by, request.resource.data.user))
+        // Request 1:1: ผู้ขอและผู้ถูกขอต้องเป็น Member คนละคนกัน
+        || (request.resource.data.kind == 'request'
+            && request.resource.data.keys().hasOnly(['kind', 'by', 'from', 'to'])
+            && request.resource.data.to is string
+            && request.resource.data.from != request.resource.data.to
+            && genOf(request.resource.data.from).role == 'member'
+            && genOf(request.resource.data.to).role == 'member'
+            && canAuthorize(request.resource.data.by, request.resource.data.from)));
       allow update, delete: if false;
     }
 
@@ -181,7 +192,7 @@ service cloud.firestore {
 
     match /notifications/{n} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(['visitorId', 'visitorName', 'visitorAvatar', 'amount', 'note', 'read', 'deleted', 'timestamp', 'op'])
+      allow create: if request.resource.data.keys().hasOnly(['kind', 'visitorId', 'visitorName', 'visitorAvatar', 'amount', 'note', 'read', 'deleted', 'timestamp', 'op'])
                     && freshOp(request.resource.data.op);
       // อ่านแล้ว / ซ่อน เท่านั้น
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'deleted']);

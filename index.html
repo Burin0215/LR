@@ -925,6 +925,10 @@
                         <button v-if="!isAdmin && viewedProfile.person.role !== 'admin'" @click="giftFromProfile(viewedProfile.person.id)" class="flex-1 py-2.5 bg-rosepink-50 hover:bg-rosepink-100 text-rosepink-600 border border-rosepink-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-gift"></i> มอบกุหลาบ
                         </button>
+                        <!-- Request 1:1 (Member ขอ Member) ใช้ดอกกุหลาบที่มีอยู่ 5 ดอก -->
+                        <button v-if="!isAdmin && viewedProfile.person.role !== 'admin'" @click="openRequestOneOnOne(viewedProfile.person.id)" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-heart"></i> Request 1:1
+                        </button>
                     </div>
                     <button v-else @click="closeModal('profileView'); openProfileEdit()" class="w-full py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-xs">
                         <i class="fa-solid fa-pen mr-1"></i> แก้ไขโปรไฟล์
@@ -1053,6 +1057,54 @@
             </form>
         </div>
 
+        <!-- Request 1:1 Modal: ยืนยัน → สำเร็จ (ให้แคปหน้าจอแจ้งน้องลู) -->
+        <div v-if="modals.requestModal && requestForm.target" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
+                <!-- ขั้นยืนยัน -->
+                <template v-if="!requestForm.result">
+                    <div class="w-16 h-16 bg-rosepink-50 text-rosepink-500 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-rosepink-200">💞</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 font-serif-title">Request 1:1 กับ {{ requestForm.target.name }}</h3>
+                        <p class="text-xs text-gray-500 mt-1">ใช้ดอกกุหลาบที่มีอยู่ <b class="text-rosepink-600">{{ REQUEST_COST }} ดอก</b> (คุณมี {{ currentRoseCount }} ดอก)</p>
+                    </div>
+                    <p v-if="currentRoseCount < REQUEST_COST" class="text-xs font-semibold text-rosepink-600 bg-rosepink-50 border border-rosepink-200 rounded-xl px-3 py-2">
+                        ดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย {{ REQUEST_COST }} ดอก
+                    </p>
+                    <div class="flex gap-2 pt-1">
+                        <button @click="closeModal('requestModal')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ยกเลิก</button>
+                        <button @click="submitRequestOneOnOne" :disabled="requestForm.sending || currentRoseCount < REQUEST_COST"
+                                class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
+                            {{ requestForm.sending ? 'กำลังส่งคำขอ...' : 'ยืนยันใช้ ' + REQUEST_COST + ' ดอก' }}
+                        </button>
+                    </div>
+                </template>
+
+                <!-- ขั้นสำเร็จ: ให้แคปหน้าจอนี้ -->
+                <template v-else>
+                    <div class="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-emerald-200">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">ส่งคำขอสำเร็จ</span>
+                        <h3 class="text-xl font-bold text-gray-800 font-serif-title mt-3">Request 1:1 💞</h3>
+                    </div>
+                    <div class="text-left text-sm bg-cream-50 border border-cream-200 rounded-2xl p-4 space-y-1.5">
+                        <div class="flex justify-between gap-3"><span class="text-gray-500">ผู้ขอ</span><span class="font-bold text-gray-800">{{ requestForm.result.from }}</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-500">ขอ 1:1 กับ</span><span class="font-bold text-gray-800">{{ requestForm.result.to }}</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-500">ใช้ดอกกุหลาบ</span><span class="font-bold text-rosepink-600">{{ REQUEST_COST }} ดอก</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-500">วันที่ &amp; เวลา</span><span class="font-semibold text-gray-800">{{ formatDate(requestForm.result.at) }}</span></div>
+                        <div class="flex justify-between gap-3"><span class="text-gray-500">รหัสอ้างอิง</span><span class="font-mono font-bold text-gray-800 tracking-wider">{{ requestForm.result.code }}</span></div>
+                    </div>
+                    <p class="text-sm font-bold text-rosepink-700 bg-rosepink-50 border border-rosepink-200 rounded-2xl px-4 py-3">
+                        📸 กรุณาแคปหน้าจอนี้ แจ้งที่นามบัตรน้องลู เพื่อดำเนินการต่อ
+                    </p>
+                    <button @click="closeModal('requestModal')" class="w-full py-3 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-2xl shadow-md text-xs">
+                        แคปหน้าจอแล้ว ปิด
+                    </button>
+                </template>
+            </div>
+        </div>
+
         <!-- Change / Reset PIN Modal -->
         <div v-if="modals.pinModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <form @submit.prevent="submitPinChange" class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 space-y-4">
@@ -1129,7 +1181,7 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-bold text-gray-800 font-serif-title">Admin Push Notifications 🔔</h3>
-                            <p class="text-[10px] text-gray-500">ประวัติการมอบดอกกุหลาบระหว่าง Member</p>
+                            <p class="text-[10px] text-gray-500">การมอบดอกกุหลาบ และคำขอ Request 1:1 ระหว่าง Member</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -1152,7 +1204,8 @@
                                 <span class="font-bold text-rosepink-700">{{ notif.visitorName }}</span>
                                 <span class="text-[10px] text-gray-400">{{ formatDate(notif.timestamp) }}</span>
                             </div>
-                            <p class="font-semibold text-xs mt-0.5">มอบดอกกุหลาบจำนวน <span class="text-rosepink-600 font-bold">{{ notif.amount }} ดอก</span></p>
+                            <p v-if="notif.kind === 'request'" class="font-semibold text-xs mt-0.5">💞 ขอ Request 1:1 <span class="text-rosepink-600 font-bold">(ใช้ {{ notif.amount }} ดอก)</span></p>
+                            <p v-else class="font-semibold text-xs mt-0.5">มอบดอกกุหลาบจำนวน <span class="text-rosepink-600 font-bold">{{ notif.amount }} ดอก</span></p>
                             <p class="text-gray-500 text-[11px] mt-1 bg-white/70 p-2 rounded-xl border border-cream-200">
                                 <span class="font-semibold text-gray-700">หมายเหตุ:</span> {{ notif.note || 'ไม่มีหมายเหตุ' }}
                             </p>
@@ -1566,7 +1619,8 @@
                     resetInventoryModal: false,
                     pinModal: false,
                     profileView: false,
-                    profileEdit: false
+                    profileEdit: false,
+                    requestModal: false
                 });
 
                 // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Member ทุกคนเป็น 0
@@ -1970,6 +2024,46 @@
                     }
                 };
 
+                // ===== Request 1:1 (Member ขอ Member) — หักดอกกุหลาบที่มีอยู่ 5 ดอก =====
+                const requestForm = ref({ target: null, sending: false, result: null });
+                const openRequestOneOnOne = (id) => {
+                    const target = identities.find(i => i.id === id);
+                    if (!target || isAdmin.value || target.role === 'admin') return;
+                    closeModal('profileView');
+                    requestForm.value = { target, sending: false, result: null };
+                    openModal('requestModal');
+                };
+                const submitRequestOneOnOne = async () => {
+                    const f = requestForm.value;
+                    const me = currentIdentity.value;
+                    if (!me || !f.target || f.sending) return;
+                    if (currentRoseCount.value < REQUEST_COST) { triggerToast(`ต้องมีดอกกุหลาบอย่างน้อย ${REQUEST_COST} ดอก`); return; }
+                    const key = requireKey();
+                    if (!key) return;
+                    const prev = inventoryFor(me.id);
+                    f.sending = true;
+                    try {
+                        const opId = await commitInventoryChange({
+                            op: { kind: 'request', from: me.id, to: f.target.id }, by: key,
+                            updates: [{ user: me.id, next: { ...prev, rose: prev.rose - REQUEST_COST } }],
+                            logs: [{
+                                userId: me.id, itemId: 'rose', changeType: 'remove', amount: REQUEST_COST,
+                                note: `ขอ Request 1:1 กับ ${f.target.name} 💞`,
+                                adminNote: `[Request 1:1] ${me.name} ขอ 1:1 กับ ${f.target.name}`
+                            }],
+                            notifications: [{
+                                kind: 'request', visitorId: me.id, visitorName: `${me.name} ➔ ${f.target.name}`, visitorAvatar: me.avatar,
+                                amount: REQUEST_COST, note: `${me.name} ขอ Request 1:1 กับ ${f.target.name}`
+                            }]
+                        });
+                        f.result = { from: me.name, to: f.target.name, at: Date.now(), code: refCode(opId) };
+                    } catch (err) {
+                        triggerToast(inventoryErrorText(err));
+                    } finally {
+                        f.sending = false;
+                    }
+                };
+
                 const giftFromProfile = (id) => {
                     closeModal('profileView');
                     formGift.value = { recipientId: id, amount: 1 };
@@ -1999,6 +2093,10 @@
                     submitProfileEdit,
                     adminModerate,
                     giftFromProfile,
+                    REQUEST_COST,
+                    requestForm,
+                    openRequestOneOnOne,
+                    submitRequestOneOnOne,
                     pinForm,
                     pinFirstInput,
                     openPinModal,

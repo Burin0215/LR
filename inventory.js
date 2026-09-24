@@ -8,9 +8,11 @@
 //   kind 'admin' → Admin ปรับได้ทุกอย่าง
 //   kind 'gift'  → { from, to, amount } ย้ายดอกกุหลาบจากคลังผู้ส่งไป "ที่ได้รับ" ของผู้รับพอดี
 //   kind 'spin'  → { user, prize } หัก 20 เหรียญ + รางวัลตามช่องวงล้อ
+//   kind 'request' → { from, to } Member ขอ 1:1 กับ Member อื่น หักดอกกุหลาบที่มีอยู่ 5 ดอก
 // firestore.rules ตรวจตัวเลขทุกครั้ง — แก้คลังตรง ๆ โดยไม่มีใบอนุญาตไม่ได้
 
 const SPIN_COST = 20;
+const REQUEST_COST = 5; // ดอกกุหลาบที่ใช้ขอ Request 1:1
 // id ของรายการในหน้าเว็บ → ชื่อช่องใน Firestore
 const ITEM_FIELDS = { rose: 'rose', rose_received: 'received', elu_coin: 'coin', ticket_1to1: 'ticket' };
 const emptyInventory = () => ({ rose: 0, received: 0, coin: 0, ticket: 0 });
@@ -106,7 +108,11 @@ async function commitInventoryChange({ op, by, updates = [], logs = [], notifica
     batch.set(db.collection('config').doc('roulette'), { prizes: roulettePrizes, op: opRef.id });
   }
   await batch.commit();
+  return opRef.id;
 }
+
+// รหัสอ้างอิงสั้น ๆ จาก id ของใบอนุญาต (ใช้ยืนยันรายการกับ Admin)
+const refCode = (opId) => String(opId || '').slice(0, 8).toUpperCase();
 
 async function markNotificationsRead(ids) {
   if (!ids.length) return;
