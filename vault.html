@@ -9,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="auth.js"></script>
-    <script src="profile.js"></script>
     <script src="inventory.js"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -779,116 +778,6 @@
             </div>
         </div>
 
-        <!-- Profile Edit Modal -->
-        <div v-if="modals.profileEdit" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <form @submit.prevent="submitProfileEdit" class="bg-white w-full max-w-lg rounded-3xl border border-cream-200 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
-                <div class="p-5 border-b border-cream-200 flex justify-between items-center shrink-0">
-                    <h3 class="text-sm font-bold text-gray-800 font-serif-title flex items-center gap-2"><i class="fa-solid fa-pen text-rosepink-500"></i> แก้ไขโปรไฟล์</h3>
-                    <button type="button" @click="closeModal('profileEdit')" class="text-gray-400 hover:text-gray-600" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <div class="p-5 space-y-5 overflow-y-auto text-xs">
-                    <!-- Photos -->
-                    <div>
-                        <div class="font-semibold text-gray-700 mb-1.5">รูปโปรไฟล์ (สูงสุด {{ PROFILE_MAX_PHOTOS }} รูป · รูปแรกคือรูปหลัก)</div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div v-for="i in PROFILE_MAX_PHOTOS" :key="i" class="aspect-[3/4] rounded-2xl overflow-hidden relative border"
-                                 :class="profileDraft.photos[i-1] ? 'border-cream-200' : 'border-dashed border-cream-400'">
-                                <template v-if="profileDraft.photos[i-1]">
-                                    <img :src="profileDraft.photos[i-1]" alt="" class="w-full h-full object-cover">
-                                    <button type="button" @click="removeDraftPhoto(i-1)" class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center" aria-label="ลบรูป"><i class="fa-solid fa-xmark text-xs"></i></button>
-                                    <button v-if="i > 1" type="button" @click="makeDraftPhotoMain(i-1)" class="absolute bottom-1.5 left-1.5 right-1.5 py-1 rounded-lg bg-white/90 text-[10px] font-semibold text-gray-700">ตั้งเป็นรูปหลัก</button>
-                                    <span v-else class="absolute bottom-1.5 left-1.5 text-[10px] font-bold bg-rosepink-500 text-white px-2 py-0.5 rounded-full">รูปหลัก</span>
-                                </template>
-                                <label v-else-if="i - 1 === profileDraft.photos.length" class="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 cursor-pointer hover:bg-cream-50">
-                                    <i class="fa-solid" :class="profilePhotoBusy ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
-                                    <span class="text-[10px]">{{ profilePhotoBusy ? 'กำลังย่อรูป...' : 'เพิ่มรูป' }}</span>
-                                    <input type="file" accept="image/*" class="hidden" @change="addDraftPhoto">
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Bio -->
-                    <label class="block">
-                        <span class="flex justify-between font-semibold text-gray-700 mb-1.5"><span>แนะนำตัวสั้น ๆ</span><span class="font-normal text-gray-400">{{ profileDraft.bio.length }}/{{ PROFILE_BIO_MAX }}</span></span>
-                        <textarea v-model="profileDraft.bio" :maxlength="PROFILE_BIO_MAX" rows="3" placeholder="ชอบกาแฟหวานน้อย เดินเล่นตอนเย็น และคุยเรื่องหนังได้ทั้งคืน"
-                                  class="w-full px-3 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-sm focus:outline-none focus:border-rosepink-400 resize-none"></textarea>
-                    </label>
-
-                    <!-- Tags -->
-                    <div>
-                        <div class="flex justify-between font-semibold text-gray-700 mb-1.5"><span>แท็กไลฟ์สไตล์</span><span class="font-normal" :class="profileDraft.tags.length >= PROFILE_MAX_TAGS ? 'text-rosepink-600' : 'text-gray-400'">เลือกแล้ว {{ profileDraft.tags.length }}/{{ PROFILE_MAX_TAGS }}</span></div>
-                        <div v-for="group in PROFILE_TAG_GROUPS" :key="group.name" class="mb-2.5">
-                            <div class="text-[11px] text-gray-400 mb-1">{{ group.name }}</div>
-                            <div class="flex flex-wrap gap-1.5">
-                                <button v-for="tag in group.tags" :key="tag" type="button" @click="toggleDraftTag(tag)"
-                                        class="px-2.5 py-1 rounded-full border transition"
-                                        :class="profileDraft.tags.includes(tag) ? 'text-white border-transparent' : 'bg-white text-gray-600 border-cream-300 hover:border-rosepink-300'"
-                                        :style="profileDraft.tags.includes(tag) ? { background: PROFILE_THEMES[profileDraft.theme].accent } : {}">{{ tag }}</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Prompts -->
-                    <div>
-                        <div class="font-semibold text-gray-700 mb-1.5">คำถามน่ารัก (ตอบได้ {{ PROFILE_MAX_PROMPTS }} ข้อ)</div>
-                        <div v-for="(p, idx) in profileDraft.prompts" :key="idx" class="flex gap-2 mb-2">
-                            <div class="flex-1 min-w-0 space-y-1.5">
-                                <select v-model="p.q" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
-                                    <option v-for="q in PROFILE_PROMPTS" :key="q" :value="q" :disabled="q !== p.q && profileDraft.prompts.some(x => x.q === q)">{{ q }}</option>
-                                </select>
-                                <input v-model="p.a" :maxlength="PROFILE_ANSWER_MAX" placeholder="คำตอบของคุณ" class="w-full px-3 py-2 bg-cream-50 border border-cream-300 rounded-xl text-sm focus:outline-none focus:border-rosepink-400">
-                            </div>
-                            <button type="button" @click="profileDraft.prompts.splice(idx, 1)" class="shrink-0 w-8 h-8 mt-0.5 rounded-lg bg-rosepink-50 text-rosepink-600 hover:bg-rosepink-100 flex items-center justify-center" aria-label="ลบคำถาม"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>
-                        <button v-if="profileDraft.prompts.length < PROFILE_MAX_PROMPTS" type="button" @click="addDraftPrompt" class="px-3 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl">
-                            <i class="fa-solid fa-plus text-[10px] mr-1"></i> เพิ่มคำถาม
-                        </button>
-                    </div>
-
-                    <!-- Extras -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <label class="block">
-                            <span class="block font-semibold text-gray-700 mb-1.5">MBTI</span>
-                            <select v-model="profileDraft.mbti" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
-                                <option value="">— ไม่ระบุ —</option>
-                                <option v-for="m in MBTI_TYPES" :key="m" :value="m">{{ m }}</option>
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="block font-semibold text-gray-700 mb-1.5">ราศี</span>
-                            <select v-model="profileDraft.zodiac" class="w-full px-2.5 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
-                                <option value="">— ไม่ระบุ —</option>
-                                <option v-for="z in ZODIACS" :key="z" :value="z">{{ z }}</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    <div>
-                        <div class="font-semibold text-gray-700 mb-1.5">สีธีมการ์ด</div>
-                        <div class="flex flex-wrap gap-2">
-                            <button v-for="(t, key) in PROFILE_THEMES" :key="key" type="button" @click="profileDraft.theme = key"
-                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border"
-                                    :class="profileDraft.theme === key ? 'border-gray-700' : 'border-cream-300'">
-                                <span class="w-4 h-4 rounded-full" :style="{ background: t.accent }"></span>
-                                <span :style="{ color: t.text }">{{ t.label }}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <p v-if="profileEditError" class="text-rosepink-600 font-semibold">{{ profileEditError }}</p>
-                </div>
-
-                <div class="p-4 border-t border-cream-200 flex gap-2 shrink-0">
-                    <button type="button" @click="closeModal('profileEdit')" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ยกเลิก</button>
-                    <button type="submit" :disabled="profileSaving || profilePhotoBusy" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
-                        {{ profileSaving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์' }}
-                    </button>
-                </div>
-            </form>
-        </div>
-
         <!-- Change / Reset PIN Modal -->
         <div v-if="modals.pinModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <form @submit.prevent="submitPinChange" class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 space-y-4">
@@ -1380,8 +1269,6 @@
                             ensureInventories(identities.map(i => i.id), map).catch(() => {});
                         }
                     }, (err) => triggerToast('โหลดคลังไม่ได้: ' + (err && err.message ? err.message : err)));
-                    subscribeLogs((list) => { inventoryLogs.value = list; }, () => {});
-                    subscribeNotifications((list) => { adminNotifications.value = list; }, () => {});
                     subscribeRoulette((prizes) => {
                         rouletteConfigured.value = !!prizes;
                         if (prizeSaveTimer) return; // Admin กำลังแก้อยู่ — ไม่ทับสิ่งที่พิมพ์
@@ -1392,6 +1279,23 @@
                     console.error(err);
                 }
 
+                // ประวัติ + แจ้งเตือน: โหลดตามสิทธิ์ของผู้ใช้ (ประหยัดโควตาอ่านของ Firebase)
+                let logsUnsub = null;
+                let notificationsUnsub = null;
+                watch(() => [currentIdentity.value && currentIdentity.value.id, isAdmin.value], ([id, admin]) => {
+                    if (logsUnsub) { logsUnsub(); logsUnsub = null; }
+                    if (notificationsUnsub) { notificationsUnsub(); notificationsUnsub = null; }
+                    inventoryLogs.value = [];
+                    adminNotifications.value = [];
+                    if (!id) return;
+                    try {
+                        logsUnsub = subscribeLogs((list) => { inventoryLogs.value = list; }, () => {}, admin ? undefined : id);
+                        if (admin) notificationsUnsub = subscribeNotifications((list) => { adminNotifications.value = list; }, () => {});
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }, { immediate: true });
+
                 const modals = ref({
                     adminAuth: false,
                     identityModal: false,
@@ -1400,8 +1304,7 @@
                     insufficientCoinsModal: false,
                     adminNotificationModal: false,
                     resetInventoryModal: false,
-                    pinModal: false,
-                    profileEdit: false
+                    pinModal: false
                 });
 
                 // Admin เท่านั้น: กดครั้งเดียว ตั้งของทุกรายการของ Member ทุกคนเป็น 0
@@ -1629,110 +1532,7 @@
                     triggerToast(f.mode === 'self' ? 'เปลี่ยน PIN เรียบร้อยแล้ว 🔑' : `ตั้ง PIN ใหม่ให้ ${f.targetName} เรียบร้อยแล้ว 🔑`);
                 };
 
-                // ===== โปรไฟล์ (Firestore: profiles/{id}) =====
-                const profiles = ref({});
-                const profilesError = ref('');
-                let profilesUnsubscribe = null;
-                watch(() => currentIdentity.value && currentIdentity.value.id, () => {
-                    if (profilesUnsubscribe) { profilesUnsubscribe(); profilesUnsubscribe = null; }
-                    profilesError.value = '';
-                    if (!currentIdentity.value) return;
-                    try {
-                        profilesUnsubscribe = subscribeProfiles(
-                            (map) => { profiles.value = map; },
-                            (err) => { profilesError.value = 'โหลดโปรไฟล์ไม่ได้: ' + (err && err.message ? err.message : err); });
-                    } catch (err) {
-                        profilesError.value = 'โหลดโปรไฟล์ไม่ได้: ' + (err && err.message ? err.message : err);
-                    }
-                }, { immediate: true });
-
-                const profileOf = (id) => profiles.value[id] || emptyProfile();
-                const profileDraft = ref(emptyProfile());
-                const profileEditError = ref('');
-                const profileSaving = ref(false);
-                const profilePhotoBusy = ref(false);
-
-                const errorText = (err) => {
-                    if (err && err.code === 'permission-denied') return 'บันทึกไม่ได้ — PIN อาจถูกเปลี่ยน กรุณาออกจากระบบแล้วเข้าใหม่';
-                    return 'บันทึกไม่สำเร็จ: ' + (err && err.message ? err.message : err);
-                };
-
-                const openProfileEdit = () => {
-                    const mine = profileOf(currentIdentity.value.id);
-                    profileDraft.value = { ...emptyProfile(), ...JSON.parse(JSON.stringify(mine)) };
-                    profileEditError.value = '';
-                    openModal('profileEdit');
-                };
-                const addDraftPhoto = async (e) => {
-                    const file = e.target.files && e.target.files[0];
-                    e.target.value = '';
-                    if (!file || profileDraft.value.photos.length >= PROFILE_MAX_PHOTOS) return;
-                    profilePhotoBusy.value = true;
-                    profileEditError.value = '';
-                    try {
-                        profileDraft.value.photos.push(await compressImage(file));
-                    } catch (err) {
-                        profileEditError.value = err && err.message ? err.message : String(err);
-                    } finally {
-                        profilePhotoBusy.value = false;
-                    }
-                };
-                const removeDraftPhoto = (i) => profileDraft.value.photos.splice(i, 1);
-                const makeDraftPhotoMain = (i) => {
-                    const [p] = profileDraft.value.photos.splice(i, 1);
-                    profileDraft.value.photos.unshift(p);
-                };
-                const toggleDraftTag = (tag) => {
-                    const tags = profileDraft.value.tags;
-                    const at = tags.indexOf(tag);
-                    if (at >= 0) tags.splice(at, 1);
-                    else if (tags.length < PROFILE_MAX_TAGS) tags.push(tag);
-                    else triggerToast(`เลือกแท็กได้สูงสุด ${PROFILE_MAX_TAGS} แท็ก`);
-                };
-                const addDraftPrompt = () => {
-                    const used = profileDraft.value.prompts.map(p => p.q);
-                    const q = PROFILE_PROMPTS.find(x => !used.includes(x));
-                    if (q) profileDraft.value.prompts.push({ q, a: '' });
-                };
-
-                const submitProfileEdit = async () => {
-                    profileEditError.value = '';
-                    if (profileDraft.value.prompts.some(p => !String(p.a || '').trim())) {
-                        profileEditError.value = 'กรอกคำตอบให้ครบ หรือลบคำถามที่ไม่ใช้';
-                        return;
-                    }
-                    if (!session.value || !session.value.key) {
-                        profileEditError.value = 'กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้ง ก่อนแก้โปรไฟล์';
-                        return;
-                    }
-                    profileSaving.value = true;
-                    try {
-                        await saveProfile(currentIdentity.value.id, session.value.key, profileDraft.value);
-                        closeModal('profileEdit');
-                        triggerToast('บันทึกโปรไฟล์เรียบร้อยแล้ว 💕');
-                    } catch (err) {
-                        profileEditError.value = errorText(err);
-                    } finally {
-                        profileSaving.value = false;
-                    }
-                };
-
                 return {
-                    PROFILE_MAX_PHOTOS, PROFILE_MAX_TAGS, PROFILE_MAX_PROMPTS, PROFILE_BIO_MAX, PROFILE_ANSWER_MAX,
-                    PROFILE_TAG_GROUPS, PROFILE_PROMPTS, MBTI_TYPES, ZODIACS, PROFILE_THEMES,
-                    profilesError,
-                    profileOf,
-                    profileDraft,
-                    profileEditError,
-                    profileSaving,
-                    profilePhotoBusy,
-                    openProfileEdit,
-                    addDraftPhoto,
-                    removeDraftPhoto,
-                    makeDraftPhotoMain,
-                    toggleDraftTag,
-                    addDraftPrompt,
-                    submitProfileEdit,
                     pinForm,
                     pinFirstInput,
                     openPinModal,

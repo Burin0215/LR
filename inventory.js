@@ -56,14 +56,18 @@ function subscribeInventories(onChange, onError) {
     (err) => onError && onError(err));
 }
 
-function subscribeLogs(onChange, onError) {
-  return authDb().collection('logs').orderBy('timestamp', 'desc').limit(500).onSnapshot(
-    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+// userId: ประวัติของคนนั้นเท่านั้น (Member) / ไม่ระบุ: ล่าสุดของทุกคน (Admin)
+// (ประหยัดโควตาอ่านของ Firebase แบบฟรี — Member ไม่ต้องโหลดประวัติของคนอื่น)
+function subscribeLogs(onChange, onError, userId) {
+  const col = authDb().collection('logs');
+  const query = userId ? col.where('userId', '==', userId) : col.orderBy('timestamp', 'desc').limit(200);
+  return query.onSnapshot(
+    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.timestamp - a.timestamp)),
     (err) => onError && onError(err));
 }
 
 function subscribeNotifications(onChange, onError) {
-  return authDb().collection('notifications').orderBy('timestamp', 'desc').limit(200).onSnapshot(
+  return authDb().collection('notifications').orderBy('timestamp', 'desc').limit(100).onSnapshot(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((n) => !n.deleted)),
     (err) => onError && onError(err));
 }

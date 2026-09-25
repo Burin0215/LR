@@ -240,7 +240,12 @@ service cloud.firestore {
       return d.content is string && d.content.size() <= 1000
         && d.image is string && d.image.size() <= 200000
         && d.feeling is string && d.feeling.size() <= 40
-        && (d.content.size() > 0 || d.image.size() > 0);
+        && (d.content.size() > 0 || d.image.size() > 0)
+        && validMentions(d);
+    }
+    // รายชื่อคนที่ถูกแท็ก (ไม่บังคับ) ไม่เกิน 10 คน
+    function validMentions(d) {
+      return !('mentions' in d) || (d.mentions is list && d.mentions.size() <= 10);
     }
 
     match /feedOps/{o} {
@@ -255,7 +260,7 @@ service cloud.firestore {
     match /posts/{p} {
       allow read: if true;
       // โพสต์ใหม่: ในนามเจ้าของใบอนุญาต
-      allow create: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
+      allow create: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'mentions', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
                     && validPostBody(request.resource.data)
                     && request.resource.data.edited == false
                     && request.resource.data.deleted == false
@@ -264,7 +269,7 @@ service cloud.firestore {
                     && freshFeed(request.resource.data.edit)
                     && feedUser(request.resource.data.edit) == request.resource.data.authorId;
       // แก้ไข / ลบ (deleted: true): เจ้าของโพสต์ หรือ Admin — เจ้าของและเวลาสร้างเปลี่ยนไม่ได้
-      allow update: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
+      allow update: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'mentions', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
                     && resource.data.deleted == false
                     && request.resource.data.authorId == resource.data.authorId
                     && request.resource.data.createdAt == resource.data.createdAt
@@ -288,7 +293,8 @@ service cloud.firestore {
       }
 
       match /comments/{c} {
-        allow create: if request.resource.data.keys().hasOnly(['authorId', 'text', 'createdAt', 'deleted', 'edit'])
+        allow create: if request.resource.data.keys().hasOnly(['authorId', 'text', 'mentions', 'createdAt', 'deleted', 'edit'])
+                    && validMentions(request.resource.data)
                     && request.resource.data.text is string
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 300
@@ -298,7 +304,7 @@ service cloud.firestore {
                     && feedUser(request.resource.data.edit) == request.resource.data.authorId
                     && exists(/databases/$(database)/documents/posts/$(p));
         // ลบความคิดเห็น: ผู้เขียน เจ้าของโพสต์ หรือ Admin — แก้ข้อความไม่ได้
-        allow update: if request.resource.data.keys().hasOnly(['authorId', 'text', 'createdAt', 'deleted', 'edit'])
+        allow update: if request.resource.data.keys().hasOnly(['authorId', 'text', 'mentions', 'createdAt', 'deleted', 'edit'])
                     && resource.data.deleted == false
                     && request.resource.data.deleted == true
                     && request.resource.data.authorId == resource.data.authorId
@@ -309,6 +315,27 @@ service cloud.firestore {
                         || feedUser(request.resource.data.edit) == get(/databases/$(database)/documents/posts/$(p)).data.authorId);
         allow delete: if false;
       }
+    }
+
+    // แจ้งเตือนการแท็ก: { to, from, postId, commentId ('' = แท็กในโพสต์), createdAt, read, edit }
+    match /mentions/{m} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['to', 'from', 'postId', 'commentId', 'createdAt', 'read', 'edit'])
+                    && request.resource.data.to is string
+                    && request.resource.data.to.matches('[a-z]{1,20}')
+                    && request.resource.data.from != request.resource.data.to
+                    && request.resource.data.postId is string
+                    && request.resource.data.commentId is string
+                    && request.resource.data.read == false
+                    && nowish(request.resource.data.createdAt)
+                    && existsAfter(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+                    && freshFeed(request.resource.data.edit)
+                    && feedUser(request.resource.data.edit) == request.resource.data.from;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'edit'])
+                    && request.resource.data.read == true
+                    && freshFeed(request.resource.data.edit)
+                    && feedUser(request.resource.data.edit) == resource.data.to;
+      allow delete: if false;
     }
 
     // อ่านถูกใจ / ความคิดเห็นของทุกโพสต์ในครั้งเดียว (collection group)
