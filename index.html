@@ -32,6 +32,12 @@
         tailwind.config = {
             theme: {
                 extend: {
+                    // ตัวอักษรใหญ่ขึ้นเพื่ออ่านง่าย (ค่าเดิมของ Tailwind: xs 12px, sm 14px, base 16px)
+                    fontSize: {
+                        xs: ['0.875rem', { lineHeight: '1.3rem' }],
+                        sm: ['0.9375rem', { lineHeight: '1.45rem' }],
+                        base: ['1.0625rem', { lineHeight: '1.65rem' }],
+                    },
                     colors: {
                         brand: {
                             pink: '#ec4899',
@@ -133,8 +139,8 @@
             -webkit-backdrop-filter: blur(20px);
         }
 
-        /* จอเล็กมาก: แท็บเมนูแสดงเฉพาะข้อความ */
-        @media (max-width: 359px) {
+        /* จอมือถือ: แท็บเมนูแสดงเฉพาะข้อความ (ตัวอักษรใหญ่ขึ้น ไอคอนจะทำให้ข้อความถูกตัด) */
+        @media (max-width: 419px) {
             #profileView nav i { display: none; }
         }
 
@@ -211,7 +217,7 @@
         <footer class="border-t border-pink-200/40 bg-white/70 backdrop-blur-md py-6 px-4 text-center text-xs text-stone-500 relative z-10">
             <div class="max-w-7xl mx-auto space-y-1.5 font-light">
                 <p class="font-serif-luxury text-lg text-pink-600 font-bold tracking-widest">LOVE ROULETTE</p>
-                <p class="text-[10px] text-stone-400">&copy; 2026 Love Roulette. All Rights Reserved.</p>
+                <p class="text-[12px] text-stone-400">&copy; 2026 Love Roulette. All Rights Reserved.</p>
             </div>
         </footer>
     </div>
@@ -262,12 +268,12 @@
                         <div class="relative">
                             <button id="mentionBellBtn" onclick="toggleMentionPanel()" class="relative w-8 h-8 rounded-full bg-white/90 hover:bg-white border border-pink-300 flex items-center justify-center text-pink-600 transition-all text-xs shadow-sm cursor-pointer" title="การแจ้งเตือน">
                                 <i class="fa-solid fa-bell"></i>
-                                <span id="mentionBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white"></span>
+                                <span id="mentionBadge" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center border-2 border-white"></span>
                             </button>
                             <div id="mentionPanel" class="hidden absolute right-0 top-10 w-[18rem] sm:w-80 max-w-[calc(100vw-2rem)] glass-card bg-white/95 rounded-2xl border border-pink-200 shadow-xl z-[60] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-pink-100 flex items-center justify-between">
                                     <span class="text-sm font-bold text-stone-800">การแจ้งเตือน</span>
-                                    <span class="text-[10px] text-stone-400">มีคนพูดถึงคุณ</span>
+                                    <span class="text-[12px] text-stone-400">มีคนพูดถึงคุณ</span>
                                 </div>
                                 <div id="mentionList" class="max-h-80 overflow-y-auto custom-scroll"></div>
                             </div>
@@ -275,10 +281,10 @@
                         <div class="flex items-center gap-2 bg-white/90 border border-pink-300 rounded-full py-1 px-2.5 shadow-sm">
                             <div id="headerProfileAvatarContainer"></div>
                             <span id="headerProfileName" class="text-xs font-semibold text-stone-800"></span>
-                            <span id="headerProfileBadge" class="text-[9px] bg-amber-500/90 text-stone-900 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"></span>
+                            <span id="headerProfileBadge" class="text-[11px] bg-amber-500/90 text-stone-900 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"></span>
                         </div>
                         <button onclick="logoutUser()" class="px-3 py-1 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium transition-all shadow-sm flex items-center gap-1.5 border border-rose-400/50">
-                            <i class="fa-solid fa-right-from-bracket text-[10px]"></i>
+                            <i class="fa-solid fa-right-from-bracket text-[12px]"></i>
                             <span class="hidden sm:inline">ออกจากระบบ</span>
                         </button>
                     </div>
@@ -297,7 +303,7 @@
                         <div id="timelineComposerAvatar" class="shrink-0"></div>
                         <div>
                             <h4 class="text-sm font-bold text-stone-800">แชร์เรื่องราวความรู้สึกให้คอมมู</h4>
-                            <p class="text-[11px] text-stone-500 font-light">โพสต์ความรู้สึก ภาพถ่าย หรือความทรงจำดีๆ ให้ทุกคนได้เห็น</p>
+                            <p class="text-[13px] text-stone-500 font-light">โพสต์ความรู้สึก ภาพถ่าย หรือความทรงจำดีๆ ให้ทุกคนได้เห็น</p>
                         </div>
                     </div>
 
@@ -316,7 +322,7 @@
 
                     <!-- Composer Controls (Feeling, Photo, Submit) -->
                     <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2 min-w-0">
                             <!-- Add Photo Attachment Button -->
                             <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-xs font-medium border border-pink-200 shadow-2xs flex items-center gap-1.5 transition-all">
                                 <i class="fa-solid fa-image text-rose-500"></i>
@@ -341,7 +347,7 @@
 
                         <!-- Submit Post Button -->
                         <button id="timelinePublishBtn" onclick="publishTimelinePost()" class="disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
-                            <i class="fa-solid fa-paper-plane text-[11px]"></i>
+                            <i class="fa-solid fa-paper-plane text-[13px]"></i>
                             <span>โพสต์</span>
                         </button>
                     </div>
@@ -368,7 +374,7 @@
                 <div id="communityDirectoryView" class="glass-card bg-white/90 rounded-3xl p-6 sm:p-8 border border-pink-300/80 shadow-lg space-y-6">
                     <div class="flex items-center justify-between pb-4 border-b border-pink-100">
                         <div>
-                            <span class="text-[10px] font-bold tracking-widest text-pink-600 uppercase">LOVE ROULETTE COMMUNITY</span>
+                            <span class="text-[12px] font-bold tracking-widest text-pink-600 uppercase">LOVE ROULETTE COMMUNITY</span>
                             <h3 class="text-2xl font-bold text-stone-800">สมาชิกทั้งหมดในคอมมูนิตี้</h3>
                             <p class="text-xs text-stone-500 mt-1">สำรวจและทำความรู้จักกับสมาชิกใน Love Roulette</p>
                         </div>
@@ -390,7 +396,7 @@
                         </button>
                         <div class="text-xs font-semibold text-stone-600 flex items-center gap-2 min-w-0">
                             <span class="hidden sm:inline">กำลังดูโปรไฟล์ของ</span>
-                            <span id="communityViewingMemberNameTag" class="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[11px] font-bold"></span>
+                            <span id="communityViewingMemberNameTag" class="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[13px] font-bold"></span>
                         </div>
                     </div>
 
@@ -438,8 +444,8 @@
                             <a id="personalInventoryLinkBtn" href="vault.html#inventory" class="py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
                                 <i class="fa-solid fa-box-archive text-xs"></i>
                                 <span>คลังดอกกุหลาบ</span>
-                                <span data-rose-badge class="hidden px-1.5 py-0.5 rounded-full bg-white/25 text-[10px] font-bold"></span>
-                                <i class="fa-solid fa-arrow-right text-[10px] opacity-80"></i>
+                                <span data-rose-badge class="hidden px-1.5 py-0.5 rounded-full bg-white/25 text-[12px] font-bold"></span>
+                                <i class="fa-solid fa-arrow-right text-[12px] opacity-80"></i>
                             </a>
                         </div>
                     </div>
@@ -475,16 +481,16 @@
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <div class="flex items-center bg-stone-800/90 rounded-full border border-white/10 p-0.5 text-xs text-stone-300">
                         <button onclick="zoomLightboxImage(-0.25)" class="w-7 h-7 rounded-full hover:bg-stone-700 flex items-center justify-center transition-colors cursor-pointer" title="ย่อภาพ">
-                            <i class="fa-solid fa-minus text-[10px]"></i>
+                            <i class="fa-solid fa-minus text-[12px]"></i>
                         </button>
-                        <span id="lightboxZoomLevelText" class="px-2 text-[11px] font-mono select-none">100%</span>
+                        <span id="lightboxZoomLevelText" class="px-2 text-[13px] font-mono select-none">100%</span>
                         <button onclick="zoomLightboxImage(0.25)" class="w-7 h-7 rounded-full hover:bg-stone-700 flex items-center justify-center transition-colors cursor-pointer" title="ขยายภาพ">
-                            <i class="fa-solid fa-plus text-[10px]"></i>
+                            <i class="fa-solid fa-plus text-[12px]"></i>
                         </button>
                     </div>
 
                     <button onclick="resetLightboxZoomAndPan()" class="px-2.5 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-xs border border-white/10 transition-colors flex items-center gap-1 cursor-pointer">
-                        <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                        <i class="fa-solid fa-rotate-left text-[12px]"></i>
                         <span class="hidden sm:inline">รีเซ็ต</span>
                     </button>
 
@@ -498,8 +504,8 @@
             <div id="lightboxViewport" class="relative flex-1 min-h-[50vh] max-h-[76vh] overflow-hidden flex items-center justify-center p-2 sm:p-4 bg-stone-950/70 cursor-grab">
                 <img id="lightboxFullImage" src="" alt="Full Artwork" class="max-w-full max-h-[74vh] object-contain crisp-img transition-transform duration-100 select-none pointer-events-auto" draggable="false">
                 
-                <div class="absolute bottom-3 left-4 bg-stone-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] text-stone-400 border border-white/10 pointer-events-none flex items-center gap-1.5">
-                    <i class="fa-solid fa-hand text-[9px] text-pink-400"></i>
+                <div class="absolute bottom-3 left-4 bg-stone-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[12px] text-stone-400 border border-white/10 pointer-events-none flex items-center gap-1.5">
+                    <i class="fa-solid fa-hand text-[11px] text-pink-400"></i>
                     <span>คลิกเพื่อสลับขนาด หรือคลิกลากเพื่อเลื่อนดูเมื่อซูม</span>
                 </div>
             </div>
@@ -524,7 +530,7 @@
                         <i class="fa-solid fa-heart"></i>
                     </span>
                     <h3 class="text-sm font-bold text-stone-800">คนที่กดถูกใจโพสต์นี้</h3>
-                    <span id="likesCountBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-bold border border-pink-200">0 คน</span>
+                    <span id="likesCountBadge" class="text-[12px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-bold border border-pink-200">0 คน</span>
                 </div>
                 <button onclick="closeLikesModal()" class="w-7 h-7 rounded-full bg-stone-100 hover:bg-pink-100 text-stone-400 hover:text-pink-600 flex items-center justify-center text-xs transition-colors cursor-pointer">
                     <i class="fa-solid fa-xmark"></i>
@@ -634,13 +640,13 @@
             <div id="loginStep2" class="hidden space-y-5">
                 <div class="text-center space-y-2">
                     <button onclick="backToStep1()" class="text-xs text-pink-600 hover:underline flex items-center justify-center gap-1 mx-auto mb-1 cursor-pointer">
-                        <i class="fa-solid fa-arrow-left text-[10px]"></i> เปลี่ยนบัญชีผู้ใช้
+                        <i class="fa-solid fa-arrow-left text-[12px]"></i> เปลี่ยนบัญชีผู้ใช้
                     </button>
                     
                     <div id="selectedUserAvatarBox" class="w-16 h-16 rounded-full bg-pink-100 border-2 border-pink-300 flex items-center justify-center overflow-hidden mx-auto shadow-md"></div>
                     <div>
                         <h3 id="selectedUserName" class="text-xl font-bold text-stone-800"></h3>
-                        <span id="selectedUserBadge" class="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold"></span>
+                        <span id="selectedUserBadge" class="text-[12px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold"></span>
                     </div>
                 </div>
 
@@ -715,7 +721,7 @@
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
                 <div class="space-y-2">
-                    <span class="inline-block text-[10px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">มอบสำเร็จ</span>
+                    <span class="inline-block text-[12px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">มอบสำเร็จ</span>
                     <h3 class="text-lg font-bold text-stone-800">มอบดอกกุหลาบ <span id="giftResultAmount"></span> ดอกให้ <span data-gift-target></span> แล้ว 🎁</h3>
                     <p class="text-xs text-stone-500">ผู้รับจะเห็นว่า "ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌"</p>
                 </div>
@@ -749,7 +755,7 @@
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
                 <div class="space-y-2">
-                    <span class="inline-block text-[10px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">ส่งคำขอสำเร็จ</span>
+                    <span class="inline-block text-[12px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">ส่งคำขอสำเร็จ</span>
                     <h3 class="text-xl font-bold text-stone-800">Request 1:1 💞</h3>
                 </div>
                 <div class="text-left text-sm bg-amber-50/60 border border-pink-200 rounded-2xl p-4 space-y-1.5">
@@ -913,7 +919,7 @@
                         ${renderAvatarHTML(user, "w-9 h-9 shrink-0")}
                         <div class="overflow-hidden">
                             <p class="text-xs font-semibold text-stone-800 truncate group-hover:text-pink-700">${user.name}</p>
-                            <span class="text-[9px] text-amber-600 font-medium tracking-wider">ADMIN</span>
+                            <span class="text-[11px] text-amber-600 font-medium tracking-wider">ADMIN</span>
                         </div>
                     </button>
                 `).join('');
@@ -925,7 +931,7 @@
                         ${renderAvatarHTML(user, "w-9 h-9 shrink-0")}
                         <div class="overflow-hidden">
                             <p class="text-xs font-semibold text-stone-800 truncate group-hover:text-pink-700">${user.name}</p>
-                            <span class="text-[9px] text-pink-500 font-medium tracking-wider">MEMBER</span>
+                            <span class="text-[11px] text-pink-500 font-medium tracking-wider">MEMBER</span>
                         </div>
                     </button>
                 `).join('');
@@ -941,8 +947,8 @@
             const badge = document.getElementById('selectedUserBadge');
             badge.innerText = user.role;
             badge.className = user.role === 'ADMIN'
-                ? 'text-[10px] bg-amber-500 text-stone-900 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold'
-                : 'text-[10px] bg-pink-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold';
+                ? 'text-[12px] bg-amber-500 text-stone-900 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold'
+                : 'text-[12px] bg-pink-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider font-bold';
 
             const avatarBox = document.getElementById('selectedUserAvatarBox');
             if (avatarBox) avatarBox.innerHTML = renderAvatarHTML(user, "w-full h-full");
@@ -1580,14 +1586,14 @@
                                 <div class="overflow-hidden text-left">
                                     <div class="flex items-center gap-1.5 flex-wrap">
                                         <span class="text-xs font-bold text-stone-800 truncate">${escapeHtml(user.name)}</span>
-                                        ${isMe ? '<span class="text-[9px] px-1.5 py-0.2 bg-rose-100 text-rose-600 rounded-full font-semibold">คุณ</span>' : ''}
-                                        <span class="text-[9px] px-2 py-0.2 rounded-full ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/60' : 'bg-pink-100 text-pink-700 font-medium'} uppercase">${user.role}</span>
+                                        ${isMe ? '<span class="text-[11px] px-1.5 py-0.2 bg-rose-100 text-rose-600 rounded-full font-semibold">คุณ</span>' : ''}
+                                        <span class="text-[11px] px-2 py-0.2 rounded-full ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/60' : 'bg-pink-100 text-pink-700 font-medium'} uppercase">${user.role}</span>
                                     </div>
-                                    <p class="text-[10px] text-stone-400 font-light truncate max-w-[180px]">${escapeHtml(user.bio || '')}</p>
+                                    <p class="text-[12px] text-stone-400 font-light truncate max-w-[180px]">${escapeHtml(user.bio || '')}</p>
                                 </div>
                             </div>
-                            <button onclick="closeLikesModal(); viewUserProfile('${user.id}')" class="px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-[11px] font-semibold transition-all shrink-0 border border-pink-200 shadow-2xs flex items-center gap-1 cursor-pointer">
-                                <i class="fa-solid fa-user text-[10px]"></i>
+                            <button onclick="closeLikesModal(); viewUserProfile('${user.id}')" class="px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-[13px] font-semibold transition-all shrink-0 border border-pink-200 shadow-2xs flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-user text-[12px]"></i>
                                 <span>ดูโปรไฟล์</span>
                             </button>
                         </div>
@@ -1668,7 +1674,7 @@
                     <span class="absolute inset-0 flex items-center justify-center">
                         <span class="w-14 h-14 rounded-2xl bg-red-600 group-hover:scale-110 transition-transform text-white flex items-center justify-center shadow-lg text-lg"><i class="fa-solid fa-play ml-0.5"></i></span>
                     </span>
-                    <span class="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] flex items-center gap-1"><i class="fa-brands fa-youtube text-red-500"></i> YouTube</span>
+                    <span class="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[12px] flex items-center gap-1"><i class="fa-brands fa-youtube text-red-500"></i> YouTube</span>
                 </div>`;
         }
 
@@ -1735,7 +1741,7 @@
                 <button type="button" onmousedown="event.preventDefault(); pickMention(${i})" class="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs cursor-pointer ${i === mentionActive ? 'bg-pink-50' : 'hover:bg-pink-50'}">
                     ${renderAvatarHTML(u, "w-6 h-6 shrink-0")}
                     <span class="font-semibold text-stone-800">${escapeHtml(u.name)}</span>
-                    <span class="ml-auto text-[9px] ${u.role === 'ADMIN' ? 'text-amber-600' : 'text-pink-500'}">${u.role}</span>
+                    <span class="ml-auto text-[11px] ${u.role === 'ADMIN' ? 'text-amber-600' : 'text-pink-500'}">${u.role}</span>
                 </button>`).join('');
             const r = el.getBoundingClientRect();
             const top = r.bottom + 4 + 240 > window.innerHeight ? Math.max(8, r.top - 4 - Math.min(240, mentionOptions.length * 36 + 8)) : r.bottom + 4;
@@ -1837,7 +1843,7 @@
                         ${renderAvatarHTML(from, "w-8 h-8 shrink-0")}
                         <span class="flex-1 min-w-0">
                             <span class="block text-xs text-stone-700 leading-snug"><b class="text-stone-800">${escapeHtml(from.name)}</b> พูดถึงคุณใน${m.commentId ? 'ความคิดเห็น' : 'โพสต์'}</span>
-                            <span class="block text-[10px] text-stone-400 mt-0.5">${timeAgo(m.createdAt)}</span>
+                            <span class="block text-[12px] text-stone-400 mt-0.5">${timeAgo(m.createdAt)}</span>
                         </span>
                         ${m.read ? '' : '<span class="w-2 h-2 rounded-full bg-rose-500 mt-1.5 shrink-0"></span>'}
                     </button>`;
@@ -1976,9 +1982,9 @@
                                 <div class="space-y-0.5 min-w-0">
                                     <div class="flex items-center gap-1.5 flex-wrap">
                                         <h5 class="text-sm font-bold text-stone-800 hover:text-pink-600 transition-colors cursor-pointer" onclick="viewUserProfile('${post.authorId}')">${escapeHtml(author.name)}</h5>
-                                        <span class="text-[9px] px-2 py-0.5 rounded-full ${author.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/80' : 'bg-pink-100 text-pink-700 font-medium'} uppercase tracking-wider">${author.role}</span>
+                                        <span class="text-[11px] px-2 py-0.5 rounded-full ${author.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 font-bold border border-amber-300/80' : 'bg-pink-100 text-pink-700 font-medium'} uppercase tracking-wider">${author.role}</span>
                                     </div>
-                                    <div class="flex items-center gap-2 text-[10px] text-stone-400 flex-wrap">
+                                    <div class="flex items-center gap-2 text-[12px] text-stone-400 flex-wrap">
                                         <span title="${escapeHtml(new Date(post.createdAt).toLocaleString('th-TH'))}">${timeAgo(post.createdAt)}</span>
                                         ${post.edited ? '<span class="text-stone-400 italic">(แก้ไขแล้ว)</span>' : ''}
                                         ${post.feeling ? `<span class="px-2 py-0.2 rounded-full bg-pink-50 border border-pink-200/80 text-pink-700 font-medium">${escapeHtml(post.feeling)}</span>` : ''}
@@ -2012,8 +2018,8 @@
                         ${post.image ? `
                             <div class="w-full bg-stone-50/70 rounded-2xl overflow-hidden border border-pink-100 p-2 flex items-center justify-center cursor-pointer group relative" onclick="openPostImage('${post.id}')" title="คลิกเพื่อดูรูปภาพขนาดเต็ม">
                                 <img src="${escapeHtml(post.image)}" alt="Post Image" class="max-h-[380px] w-auto object-contain rounded-xl shadow-2xs group-hover:scale-[1.01] transition-transform duration-300">
-                                <span class="absolute bottom-4 right-4 bg-stone-900/75 hover:bg-rose-600 text-white text-[10px] font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm shadow-xs transition-colors">
-                                    <i class="fa-solid fa-expand text-[9px]"></i> ดูภาพเต็ม
+                                <span class="absolute bottom-4 right-4 bg-stone-900/75 hover:bg-rose-600 text-white text-[12px] font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm shadow-xs transition-colors">
+                                    <i class="fa-solid fa-expand text-[11px]"></i> ดูภาพเต็ม
                                 </span>
                             </div>
                         ` : ''}
@@ -2021,15 +2027,15 @@
                         <!-- Post Interaction Summary (Likes Stack & Comment Count) -->
                         <div class="flex items-center justify-between gap-2 pt-2 border-t border-pink-100 text-xs text-stone-500">
                             <div onclick="openLikesModal('${post.id}')" class="flex items-center gap-2 cursor-pointer group hover:opacity-85 transition-opacity min-w-0" title="คลิกเพื่อดูสมาชิกที่ถูกใจโพสต์นี้">
-                                <span class="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] shadow-xs shrink-0 group-hover:scale-110 transition-transform">
+                                <span class="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[12px] shadow-xs shrink-0 group-hover:scale-110 transition-transform">
                                     <i class="fa-solid fa-heart"></i>
                                 </span>
                                 ${renderLikersAvatarStack(post)}
-                                <span class="text-[11px] text-stone-600 group-hover:text-rose-600 transition-colors select-none truncate">
+                                <span class="text-[13px] text-stone-600 group-hover:text-rose-600 transition-colors select-none truncate">
                                     ${getLikedByText(post)}
                                 </span>
                             </div>
-                            <span class="text-[11px] text-stone-400 font-light select-none shrink-0">${post.comments.length} ความคิดเห็น</span>
+                            <span class="text-[13px] text-stone-400 font-light select-none shrink-0">${post.comments.length} ความคิดเห็น</span>
                         </div>
 
                         <!-- Action Buttons (Like / Comment) -->
@@ -2053,7 +2059,7 @@
                                 </div>
                                 <div class="flex-1 relative">
                                     <input type="text" id="commentInput_${post.id}" data-mention maxlength="300" placeholder="เขียนความคิดเห็น... (@ แท็กเพื่อน)" oninput="pendingCommentValues['${post.id}'] = this.value" onkeyup="if(event.key === 'Enter' && !mentionJustPicked) submitTimelineComment('${post.id}'); mentionJustPicked = false" class="w-full pl-3 pr-9 py-2 text-xs bg-white border border-pink-200 rounded-full focus:border-pink-400 focus:ring-1 focus:ring-pink-200 outline-none text-stone-800 shadow-2xs">
-                                    <button onclick="submitTimelineComment('${post.id}')" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] transition-all cursor-pointer">
+                                    <button onclick="submitTimelineComment('${post.id}')" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[12px] transition-all cursor-pointer">
                                         <i class="fa-solid fa-arrow-up"></i>
                                     </button>
                                 </div>
@@ -2072,8 +2078,8 @@
                                                 </div>
                                                 <div class="bg-white border border-pink-100/80 rounded-2xl rounded-tl-xs px-3 py-1.5 shadow-2xs flex-1 min-w-0">
                                                     <div class="flex items-center justify-between gap-1">
-                                                        <span class="text-[11px] font-bold text-stone-800">${escapeHtml(cAuthor.name)}</span>
-                                                        <span class="flex items-center gap-1.5 text-[9px] text-stone-400 shrink-0">
+                                                        <span class="text-[13px] font-bold text-stone-800">${escapeHtml(cAuthor.name)}</span>
+                                                        <span class="flex items-center gap-1.5 text-[11px] text-stone-400 shrink-0">
                                                             ${timeAgo(c.createdAt)}
                                                             ${canDeleteComment ? `<button onclick="deleteTimelineComment('${post.id}', '${c.id}')" class="text-stone-300 hover:text-rose-500 cursor-pointer" title="ลบความคิดเห็น"><i class="fa-solid fa-xmark"></i></button>` : ''}
                                                         </span>
@@ -2093,7 +2099,7 @@
             if (timelineHasMore) feedContainer.insertAdjacentHTML('beforeend', `
                 <div class="text-center pt-1">
                     <button onclick="loadMorePosts()" class="px-5 py-2.5 rounded-full bg-white border border-pink-300 hover:bg-pink-50 text-pink-700 text-xs font-semibold shadow-sm transition-all cursor-pointer">
-                        <i class="fa-solid fa-chevron-down text-[10px] mr-1"></i> ดูโพสต์เก่าเพิ่มเติม
+                        <i class="fa-solid fa-chevron-down text-[12px] mr-1"></i> ดูโพสต์เก่าเพิ่มเติม
                     </button>
                 </div>`);
             // คืนข้อความที่กำลังพิมพ์ให้ช่องความคิดเห็นที่ถูกวาดใหม่
@@ -2121,12 +2127,12 @@
                     </div>
                     <div class="space-y-1 w-full">
                         <p class="text-sm font-bold text-stone-800 group-hover:text-pink-600 transition-colors truncate">${user.name}</p>
-                        <span class="inline-block text-[10px] px-2.5 py-0.5 rounded-full ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 border border-amber-300 font-bold' : 'bg-pink-100 text-pink-600 font-medium'} uppercase tracking-wider">${user.role}</span>
-                        <p class="text-[11px] text-stone-500 font-light italic line-clamp-2 px-1 pt-1">${escapeHtml(user.bio || '')}</p>
+                        <span class="inline-block text-[12px] px-2.5 py-0.5 rounded-full ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 border border-amber-300 font-bold' : 'bg-pink-100 text-pink-600 font-medium'} uppercase tracking-wider">${user.role}</span>
+                        <p class="text-[13px] text-stone-500 font-light italic line-clamp-2 px-1 pt-1">${escapeHtml(user.bio || '')}</p>
                     </div>
                     <div class="w-full pt-1" onclick="event.stopPropagation()">
                         <button onclick="viewUserProfile('${user.id}')" class="w-full py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-xl text-xs font-semibold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer">
-                            <i class="fa-solid fa-user text-[11px]"></i>
+                            <i class="fa-solid fa-user text-[13px]"></i>
                             <span>ดูโปรไฟล์</span>
                         </button>
                     </div>
@@ -2178,7 +2184,7 @@
                         <a href="${VAULT_URL}#inventory" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
                             <i class="fa-solid fa-box-archive text-xs"></i>
                             <span>คลังดอกกุหลาบของฉัน</span>
-                            <i class="fa-solid fa-arrow-right text-[10px] opacity-80"></i>
+                            <i class="fa-solid fa-arrow-right text-[12px] opacity-80"></i>
                         </a>
                     `;
                 } else {
@@ -2199,7 +2205,7 @@
                     <button onclick="openRequestModal('${user.id}')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-heart text-xs"></i>
                         <span>Request 1:1</span>
-                        <span class="px-1.5 py-0.5 rounded-full bg-white/25 text-[10px] font-bold">🌹 ${REQUEST_COST}</span>
+                        <span class="px-1.5 py-0.5 rounded-full bg-white/25 text-[12px] font-bold">🌹 ${REQUEST_COST}</span>
                     </button>
                     </div>
                 ` : '';
@@ -2239,12 +2245,12 @@
                 ? `<img src="${escapeHtml(photos[idx])}" alt="${escapeHtml(user.name)}" class="absolute inset-0 w-full h-full object-cover">`
                 : `<div class="absolute inset-0 flex items-center justify-center text-7xl" style="background:linear-gradient(160deg, ${theme.bg}, #fff7ed)">${escapeHtml(user.avatarEmoji || '🌸')}</div>`;
 
-            const chip = (icon, text) => `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold" style="background:${theme.bg};color:${theme.text}">${icon} ${escapeHtml(text)}</span>`;
+            const chip = (icon, text) => `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-semibold" style="background:${theme.bg};color:${theme.text}">${icon} ${escapeHtml(text)}</span>`;
             const basics = [p.mbti ? chip('🧠', p.mbti) : '', p.zodiac ? chip('✨', p.zodiac) : ''].join('');
 
             const section = (title, body) => `
                 <div class="space-y-2">
-                    <p class="text-[11px] font-semibold uppercase tracking-wider" style="color:${theme.accent}">${title}</p>
+                    <p class="text-[13px] font-semibold uppercase tracking-wider" style="color:${theme.accent}">${title}</p>
                     ${body}
                 </div>`;
 
@@ -2252,10 +2258,10 @@
                 p.bio ? section('About me', `<p class="text-sm text-stone-700 leading-relaxed whitespace-pre-line">${escapeHtml(p.bio)}</p>`) : '',
                 basics ? section('ข้อมูลพื้นฐาน', `<div class="flex flex-wrap gap-1.5">${basics}</div>`) : '',
                 p.tags.length ? section('ไลฟ์สไตล์', `<div class="flex flex-wrap gap-1.5">${p.tags.map(t =>
-                    `<span class="px-2.5 py-1 rounded-full bg-white border text-[11px] text-stone-700" style="border-color:${theme.accent}55">${escapeHtml(t)}</span>`).join('')}</div>`) : '',
+                    `<span class="px-2.5 py-1 rounded-full bg-white border text-[13px] text-stone-700" style="border-color:${theme.accent}55">${escapeHtml(t)}</span>`).join('')}</div>`) : '',
                 p.prompts.length ? section('คำถามน่ารัก', p.prompts.map(q => `
                     <div class="rounded-2xl p-3.5 border" style="background:${theme.bg}66;border-color:${theme.accent}33">
-                        <p class="text-[11px] font-semibold" style="color:${theme.text}">${escapeHtml(q.q)}</p>
+                        <p class="text-[13px] font-semibold" style="color:${theme.text}">${escapeHtml(q.q)}</p>
                         <p class="text-base font-bold text-stone-800 leading-snug mt-0.5">${escapeHtml(q.a)}</p>
                     </div>`).join('')) : ''
             ].filter(Boolean).join('');
@@ -2274,7 +2280,7 @@
                         <div class="absolute inset-x-0 bottom-0 pt-16 pb-4 px-4 bg-gradient-to-t from-black/70 via-black/25 to-transparent pointer-events-none">
                             <div class="flex items-end justify-between gap-2">
                                 <h2 class="text-2xl sm:text-3xl font-bold text-white drop-shadow">${escapeHtml(user.name)}</h2>
-                                <span class="shrink-0 px-2.5 py-0.5 rounded-full bg-white/85 text-[10px] font-bold" style="color:${theme.text}">${roleLabel}</span>
+                                <span class="shrink-0 px-2.5 py-0.5 rounded-full bg-white/85 text-[12px] font-bold" style="color:${theme.text}">${roleLabel}</span>
                             </div>
                             ${basics ? `<p class="text-xs text-white/90 mt-1">${[p.mbti, p.zodiac].filter(Boolean).map(escapeHtml).join(' · ')}</p>` : ''}
                         </div>
@@ -2316,7 +2322,7 @@
             if (currentUser && currentUser.role === 'ADMIN') {
                 controls.innerHTML = `
                     <button onclick="openPortfolioModal('${targetUser.id}')" class="shrink-0 whitespace-nowrap px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
-                        <i class="fa-solid fa-plus text-[11px]"></i>
+                        <i class="fa-solid fa-plus text-[13px]"></i>
                         <span>เพิ่มผลงาน<span class="hidden sm:inline"> (Admin)</span></span>
                     </button>
                 `;
@@ -2346,12 +2352,12 @@
                                     <div class="w-full h-full flex items-center justify-center text-4xl">📸</div>
                                 `}
                                 ${item.tag ? `
-                                    <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-stone-900/70 text-white text-[9px] font-medium backdrop-blur-sm">
+                                    <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-stone-900/70 text-white text-[11px] font-medium backdrop-blur-sm">
                                         ${item.tag}
                                     </span>
                                 ` : ''}
-                                <span class="absolute bottom-2 right-2 bg-stone-900/70 text-white text-[9px] px-2 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm">
-                                    <i class="fa-solid fa-expand text-[8px]"></i> ดูภาพเต็ม
+                                <span class="absolute bottom-2 right-2 bg-stone-900/70 text-white text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm">
+                                    <i class="fa-solid fa-expand text-[10px]"></i> ดูภาพเต็ม
                                 </span>
                             </div>
 
@@ -2950,13 +2956,13 @@
                         <img src="${escapeHtml(src)}" alt="" class="w-full h-full object-cover">
                         <button type="button" onclick="removeDraftPhoto(${i})" class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center cursor-pointer" aria-label="ลบรูป"><i class="fa-solid fa-xmark text-xs"></i></button>
                         ${i === 0
-                            ? '<span class="absolute bottom-1.5 left-1.5 text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full">รูปหลัก</span>'
-                            : `<button type="button" onclick="makeDraftPhotoMain(${i})" class="absolute bottom-1.5 left-1.5 right-1.5 py-1 rounded-lg bg-white/90 text-[10px] font-semibold text-stone-700 cursor-pointer">ตั้งเป็นรูปหลัก</button>`}
+                            ? '<span class="absolute bottom-1.5 left-1.5 text-[12px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full">รูปหลัก</span>'
+                            : `<button type="button" onclick="makeDraftPhotoMain(${i})" class="absolute bottom-1.5 left-1.5 right-1.5 py-1 rounded-lg bg-white/90 text-[12px] font-semibold text-stone-700 cursor-pointer">ตั้งเป็นรูปหลัก</button>`}
                     </div>`;
                 if (i === d.photos.length) return `
                     <label class="aspect-[3/4] rounded-2xl border border-dashed border-pink-300 flex flex-col items-center justify-center gap-1 text-stone-400 cursor-pointer hover:bg-pink-50">
                         <i class="fa-solid ${profilePhotoBusy ? 'fa-spinner fa-spin' : 'fa-plus'}"></i>
-                        <span class="text-[10px]">${profilePhotoBusy ? 'กำลังย่อรูป...' : 'เพิ่มรูป'}</span>
+                        <span class="text-[12px]">${profilePhotoBusy ? 'กำลังย่อรูป...' : 'เพิ่มรูป'}</span>
                         <input type="file" accept="image/*" class="hidden" onchange="addDraftPhoto(event)">
                     </label>`;
                 return '<div class="aspect-[3/4] rounded-2xl border border-dashed border-pink-200"></div>';
@@ -2964,7 +2970,7 @@
 
             const tags = PROFILE_TAG_GROUPS.map((g, gi) => `
                 <div class="mb-2.5">
-                    <div class="text-[11px] text-stone-400 mb-1">${escapeHtml(g.name)}</div>
+                    <div class="text-[13px] text-stone-400 mb-1">${escapeHtml(g.name)}</div>
                     <div class="flex flex-wrap gap-1.5">
                         ${g.tags.map((t, ti) => {
                             const on = d.tags.includes(t);
@@ -3012,7 +3018,7 @@
                 <div>
                     <div class="font-semibold text-stone-700 mb-1.5">คำถามน่ารัก (ตอบได้ ${PROFILE_MAX_PROMPTS} ข้อ)</div>
                     ${prompts}
-                    ${d.prompts.length < PROFILE_MAX_PROMPTS ? '<button type="button" onclick="addDraftPrompt()" class="px-3 py-2 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 font-semibold rounded-xl cursor-pointer"><i class="fa-solid fa-plus text-[10px] mr-1"></i> เพิ่มคำถาม</button>' : ''}
+                    ${d.prompts.length < PROFILE_MAX_PROMPTS ? '<button type="button" onclick="addDraftPrompt()" class="px-3 py-2 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 font-semibold rounded-xl cursor-pointer"><i class="fa-solid fa-plus text-[12px] mr-1"></i> เพิ่มคำถาม</button>' : ''}
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
