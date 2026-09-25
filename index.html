@@ -1341,10 +1341,13 @@
             }
         }
 
+        // โพสต์ที่กำลังส่งความคิดเห็นอยู่ (กันกดส่งซ้ำ — ช่องพิมพ์อาจถูกวาดใหม่ระหว่างรอ)
+        const commentSending = new Set();
+
         async function submitTimelineComment(postId) {
-            if (!currentUser) return;
+            if (!currentUser || commentSending.has(postId)) return;
             const input = document.getElementById(`commentInput_${postId}`);
-            if (!input || input.disabled) return;
+            if (!input) return;
             const text = input.value.trim();
             if (!text) return;
             if (linkPolicyError(text)) { showToast(linkPolicyError(text)); return; }
@@ -1353,16 +1356,22 @@
             const key = myFeedKey();
             if (!key) return;
 
-            input.disabled = true;
+            // ล้างช่องทันที (Firestore อัปเดตหน้าจอก่อนบันทึกเสร็จ — ถ้าล้างทีหลัง ข้อความจะถูกคืนกลับมา)
+            input.value = '';
+            pendingCommentValues[postId] = '';
+            commentSending.add(postId);
             try {
                 await addPostComment(post.id, currentUser.id, key, text);
-                input.value = '';
-                pendingCommentValues[postId] = '';
             } catch (err) {
                 showToast(feedErrorText(err));
+                // ส่งไม่สำเร็จ → คืนข้อความให้แก้แล้วส่งใหม่
+                const current = document.getElementById(`commentInput_${postId}`);
+                if (current && !current.value) current.value = text;
+                pendingCommentValues[postId] = text;
             } finally {
+                commentSending.delete(postId);
                 const again = document.getElementById(`commentInput_${postId}`);
-                if (again) { again.disabled = false; again.focus(); }
+                if (again) again.focus();
             }
         }
 
