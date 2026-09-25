@@ -139,9 +139,12 @@ service cloud.firestore {
             && ((u == p.from && n.rose == o.rose - p.amount && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
              || (u == p.to && n.received == o.received + p.amount && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
                  && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
-        // Request 1:1: ผู้ขอเสียดอกที่ใช้ได้ 5 ดอก → ผู้ถูกขอได้ "ดอกที่ได้รับจาก Member" +5 ในชุดเดียวกัน
+        // Request 1:1: ผู้ขอใช้ตั๋ว 1:1 1 ใบก่อน (pay: 'ticket') — ไม่มีตั๋วจึงใช้ดอกที่ใช้ได้ 5 ดอก (pay: 'rose')
+        //              ผู้ถูกขอได้ "ดอกที่ได้รับจาก Member" +5 ในชุดเดียวกันเสมอ
         || (p.kind == 'request'
-            && ((u == p.from && n.rose == o.rose - 5 && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
+            && ((u == p.from && n.received == o.received && n.coin == o.coin
+                 && ((p.get('pay', 'rose') == 'ticket' && o.ticket >= 1 && n.ticket == o.ticket - 1 && n.rose == o.rose)
+                  || (p.get('pay', 'rose') == 'rose' && o.ticket < 1 && n.rose == o.rose - 5 && n.ticket == o.ticket)))
              || (u == p.to && n.received == o.received + 5 && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
                  && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
         || (p.kind == 'spin' && u == p.user && p.prize is int && o.coin >= 20 && n.received == o.received
@@ -164,7 +167,8 @@ service cloud.firestore {
             && canAuthorize(request.resource.data.by, request.resource.data.user))
         // Request 1:1: ผู้ขอและผู้ถูกขอต้องเป็น Member คนละคนกัน
         || (request.resource.data.kind == 'request'
-            && request.resource.data.keys().hasOnly(['kind', 'by', 'from', 'to'])
+            && request.resource.data.keys().hasOnly(['kind', 'by', 'from', 'to', 'pay'])
+            && request.resource.data.get('pay', 'rose') in ['rose', 'ticket']
             && request.resource.data.to is string
             && request.resource.data.from != request.resource.data.to
             && genOf(request.resource.data.from).role == 'member'

@@ -884,7 +884,7 @@
                                 <span class="font-bold text-rosepink-700">{{ notif.visitorName }}</span>
                                 <span class="text-[12px] text-gray-400">{{ formatDate(notif.timestamp) }}</span>
                             </div>
-                            <p v-if="notif.kind === 'request'" class="font-semibold text-xs mt-0.5">💞 ขอ Request 1:1 <span class="text-rosepink-600 font-bold">(ใช้ {{ notif.amount }} ดอก)</span></p>
+                            <p v-if="notif.kind === 'request'" class="font-semibold text-xs mt-0.5">💞 ขอ Request 1:1 <span class="text-rosepink-600 font-bold">({{ (notif.note || '').includes('ตั๋ว') ? 'ใช้ตั๋ว 1:1 1 ใบ' : 'ใช้ ' + notif.amount + ' ดอก' }})</span></p>
                             <p v-else class="font-semibold text-xs mt-0.5">มอบดอกกุหลาบจำนวน <span class="text-rosepink-600 font-bold">{{ notif.amount }} ดอก</span></p>
                             <p class="text-gray-500 text-[13px] mt-1 bg-white/70 p-2 rounded-xl border border-cream-200">
                                 <span class="font-semibold text-gray-700">หมายเหตุ:</span> {{ notif.note || 'ไม่มีหมายเหตุ' }}

@@ -739,7 +739,7 @@
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-pink-600 tracking-widest uppercase">REQUEST 1:1</span>
                     <h3 class="text-xl font-bold text-stone-800">Request 1:1 กับ <span data-request-target></span></h3>
-                    <p class="text-xs text-stone-500">ใช้ดอกกุหลาบที่ใช้ได้ <b class="text-rose-600"><span data-request-cost></span> ดอก</b> (คุณมี <span id="requestMyRoses">-</span> ดอก)</p>
+                    <p id="requestPayText" class="text-xs text-stone-500"></p>
                     <p class="text-xs text-stone-500"><span data-request-target></span> จะได้รับ <span data-request-cost></span> ดอกทันที โดยไม่รู้ว่าใครขอ 🤫</p>
                 </div>
                 <p id="requestErrorText" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2"></p>
@@ -761,7 +761,7 @@
                 <div class="text-left text-sm bg-amber-50/60 border border-pink-200 rounded-2xl p-4 space-y-1.5">
                     <div class="flex justify-between gap-3"><span class="text-stone-500">ผู้ขอ</span><span id="requestResultFrom" class="font-bold text-stone-800"></span></div>
                     <div class="flex justify-between gap-3"><span class="text-stone-500">ขอ 1:1 กับ</span><span id="requestResultTo" class="font-bold text-stone-800"></span></div>
-                    <div class="flex justify-between gap-3"><span class="text-stone-500">ใช้ดอกกุหลาบ</span><span class="font-bold text-rose-600"><span data-request-cost></span> ดอก</span></div>
+                    <div class="flex justify-between gap-3"><span class="text-stone-500">ใช้</span><span id="requestResultPaid" class="font-bold text-rose-600"></span></div>
                     <div class="flex justify-between gap-3"><span class="text-stone-500">วันที่ &amp; เวลา</span><span id="requestResultAt" class="font-semibold text-stone-800"></span></div>
                     <div class="flex justify-between gap-3"><span class="text-stone-500">รหัสอ้างอิง</span><span id="requestResultCode" class="font-mono font-bold text-stone-800 tracking-wider"></span></div>
                 </div>
@@ -1092,14 +1092,18 @@
         // จำนวนดอกกุหลาบที่ใช้ได้ของฉัน (แสดงบนปุ่มคลังดอกกุหลาบ)
         let myRoseUnsub = null;
         let myRoseCount = null;
+        let myTicketCount = null; // ตั๋ว 1:1 — Request 1:1 ใช้ตั๋วก่อนดอกกุหลาบ
         function subscribeMyRoses() {
             if (myRoseUnsub) myRoseUnsub();
             myRoseCount = null;
+            myTicketCount = null;
             renderRoseBadges();
             if (!currentUser || currentUser.role === 'ADMIN') return;
             myRoseUnsub = authDb().collection('inventories').doc(currentUser.id).onSnapshot(snap => {
                 myRoseCount = snap.exists ? (snap.data().rose || 0) : 0;
+                myTicketCount = snap.exists ? (snap.data().ticket || 0) : 0;
                 renderRoseBadges();
+                if (viewedCommunityUser) renderCommunityMemberDetail(viewedCommunityUser);
                 if (requestTarget) renderRequestConfirm();
                 if (giftTarget && !giftSending) renderGiftForm(true);
             }, () => {});
@@ -2205,7 +2209,7 @@
                     <button onclick="openRequestModal('${user.id}')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-heart text-xs"></i>
                         <span>Request 1:1</span>
-                        <span class="px-1.5 py-0.5 rounded-full bg-white/25 text-[12px] font-bold">🌹 ${REQUEST_COST}</span>
+                        <span class="px-1.5 py-0.5 rounded-full bg-white/25 text-[12px] font-bold">${myTicketCount > 0 ? '🎫 1' : `🌹 ${REQUEST_COST}`}</span>
                     </button>
                     </div>
                 ` : '';
@@ -2794,13 +2798,26 @@
             el.classList.toggle('hidden', !msg);
         }
 
+        // Request 1:1 ใช้ตั๋ว 1:1 ก่อน — ไม่มีตั๋วจึงใช้ดอกกุหลาบที่ใช้ได้ 5 ดอก
+        function requestPayMethod() {
+            if (myTicketCount === null || myRoseCount === null) return null;
+            if (myTicketCount >= 1) return 'ticket';
+            return myRoseCount >= REQUEST_COST ? 'rose' : 'none';
+        }
+
         function renderRequestConfirm() {
             const btn = document.getElementById('requestSubmitBtn');
-            document.getElementById('requestMyRoses').textContent = myRoseCount === null ? '-' : myRoseCount;
-            btn.textContent = requestSending ? 'กำลังส่งคำขอ...' : `ยืนยันใช้ ${REQUEST_COST} ดอก`;
-            btn.disabled = requestSending || myRoseCount === null || myRoseCount < REQUEST_COST;
-            if (myRoseCount !== null && myRoseCount < REQUEST_COST && !requestSending) {
-                setRequestError(`ดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
+            const pay = requestPayMethod();
+            const payText = document.getElementById('requestPayText');
+            if (pay === 'ticket') {
+                payText.innerHTML = `ใช้ <b class="text-rose-600">ตั๋ว 1:1 1 ใบ</b> (คุณมี ${myTicketCount} ใบ) — ไม่หักดอกกุหลาบ`;
+            } else {
+                payText.innerHTML = `ใช้ดอกกุหลาบที่ใช้ได้ <b class="text-rose-600">${REQUEST_COST} ดอก</b> (คุณมี ${myRoseCount === null ? '-' : myRoseCount} ดอก)`;
+            }
+            btn.textContent = requestSending ? 'กำลังส่งคำขอ...' : pay === 'ticket' ? 'ยืนยันใช้ตั๋ว 1 ใบ' : `ยืนยันใช้ ${REQUEST_COST} ดอก`;
+            btn.disabled = requestSending || pay === null || pay === 'none';
+            if (pay === 'none' && !requestSending) {
+                setRequestError(`ไม่มีตั๋ว 1:1 และดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
             }
         }
 
@@ -2859,17 +2876,20 @@
                 if (!mySnap.exists || !targetSnap.exists) throw new Error('ยังไม่มีคลังของผู้ใช้นี้ในระบบ กรุณาแจ้ง Admin');
                 const prev = { ...emptyInventory(), ...mySnap.data() };
                 const next = { ...emptyInventory(), ...targetSnap.data() };
-                if (prev.rose < REQUEST_COST) throw new Error(`ดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
+                // ใช้ตั๋วก่อน (ตัดสินจากยอดล่าสุดใน Firestore — Rules บังคับเงื่อนไขเดียวกัน)
+                const pay = prev.ticket >= 1 ? 'ticket' : 'rose';
+                if (pay === 'rose' && prev.rose < REQUEST_COST) throw new Error(`ไม่มีตั๋ว 1:1 และดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
+                const mine = pay === 'ticket' ? { ...prev, ticket: prev.ticket - 1 } : { ...prev, rose: prev.rose - REQUEST_COST };
                 const opId = await commitInventoryChange({
-                    op: { kind: 'request', from: me.id, to: target.id }, by: session.key,
+                    op: { kind: 'request', from: me.id, to: target.id, pay }, by: session.key,
                     updates: [
-                        { user: me.id, next: { ...prev, rose: prev.rose - REQUEST_COST } },
+                        { user: me.id, next: mine },
                         { user: target.id, next: { ...next, received: next.received + REQUEST_COST } }
                     ],
                     logs: [{
-                        userId: me.id, itemId: 'rose', changeType: 'remove', amount: REQUEST_COST,
-                        note: `ขอ Request 1:1 กับ ${target.name} 💞`,
-                        adminNote: `[Request 1:1] ${me.name} ขอ 1:1 กับ ${target.name}`
+                        userId: me.id, itemId: pay === 'ticket' ? 'ticket_1to1' : 'rose', changeType: 'remove', amount: pay === 'ticket' ? 1 : REQUEST_COST,
+                        note: `ขอ Request 1:1 กับ ${target.name} 💞${pay === 'ticket' ? ' (ใช้ตั๋ว 1:1)' : ''}`,
+                        adminNote: `[Request 1:1] ${me.name} ขอ 1:1 กับ ${target.name} — จ่ายด้วย${pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ' : `ดอกกุหลาบ ${REQUEST_COST} ดอก`}`
                     }, {
                         // คำขอเป็นความลับของผู้ถูกขอ — รู้เฉพาะผู้ขอและ Admin
                         userId: target.id, itemId: 'rose_received', changeType: 'add', amount: REQUEST_COST,
@@ -2878,10 +2898,12 @@
                     }],
                     notifications: [{
                         kind: 'request', visitorId: me.id, visitorName: `${me.name} ➔ ${target.name}`, visitorAvatar: me.avatarEmoji,
-                        amount: REQUEST_COST, note: `${me.name} ขอ Request 1:1 กับ ${target.name}`
+                        amount: pay === 'ticket' ? 1 : REQUEST_COST,
+                        note: `${me.name} ขอ Request 1:1 กับ ${target.name} (ใช้${pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ' : `ดอกกุหลาบ ${REQUEST_COST} ดอก`})`
                     }]
                 });
 
+                document.getElementById('requestResultPaid').textContent = pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ 🎫' : `ดอกกุหลาบ ${REQUEST_COST} ดอก 🌹`;
                 document.getElementById('requestResultFrom').textContent = me.name;
                 document.getElementById('requestResultTo').textContent = target.name;
                 document.getElementById('requestResultAt').textContent = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
