@@ -6,13 +6,14 @@
     <title>Love Roulette - Where Destiny Meets Unforgettable Memories</title>
 
     <!-- ข้อมูลสมาชิก, PIN, โปรไฟล์ และคลัง ใช้ชุดเดียวกับคลังดอกกุหลาบ (vault.html) -->
+    <!-- ?v= : เปลี่ยนทุกครั้งที่แก้ไฟล์ .js เพื่อให้เบราว์เซอร์โหลดเวอร์ชันใหม่ (ทั้ง index.html และ vault.html) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="auth.js"></script>
-    <script src="profile.js"></script>
-    <script src="inventory.js"></script>
-    <script src="timeline.js"></script>
+    <script src="firebase-config.js?v=20260926"></script>
+    <script src="auth.js?v=20260926"></script>
+    <script src="profile.js?v=20260926"></script>
+    <script src="inventory.js?v=20260926"></script>
+    <script src="timeline.js?v=20260926"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1341,7 +1342,7 @@
         async function toggleTimelineLike(postId) {
             if (!currentUser) return;
             const post = TIMELINE_POSTS.find(p => p.id === postId);
-            if (!post) return;
+            if (!post || !post.loaded) return;
             const key = myFeedKey();
             if (!key) return;
             try {
@@ -1525,6 +1526,7 @@
         }
 
         function getLikedByText(post) {
+            if (!post.loaded) return '<span class="text-stone-400">กำลังโหลด…</span>';
             if (!post.likes || post.likes.length === 0) {
                 return '<span class="text-stone-400">ยังไม่มีคนกดถูกใจ</span>';
             }
@@ -1909,6 +1911,23 @@
         // ข้อความที่กำลังพิมพ์ในช่องความคิดเห็น (คงไว้เมื่อไทม์ไลน์อัปเดตระหว่างพิมพ์)
         const pendingCommentValues = {};
 
+        // โพสต์ที่เลื่อนมาใกล้จอ (ล่วงหน้า ~600px) → เริ่มโหลดถูกใจ/ความคิดเห็น (ประหยัดโควตาอ่าน)
+        const postObserver = 'IntersectionObserver' in window
+            ? new IntersectionObserver(entries => {
+                const ids = entries.filter(e => e.isIntersecting).map(e => e.target.dataset.postId);
+                if (ids.length && timelineSync && timelineSync.watchPosts) timelineSync.watchPosts(ids);
+            }, { rootMargin: '600px 0px' })
+            : null;
+        function observePostCards(container) {
+            const cards = [...container.querySelectorAll('[data-post-id]')];
+            if (!postObserver) {
+                if (timelineSync && timelineSync.watchPosts) timelineSync.watchPosts(cards.map(c => c.dataset.postId));
+                return;
+            }
+            postObserver.disconnect();
+            cards.forEach(c => postObserver.observe(c));
+        }
+
         // อัปเดตการ์ดโพสต์แบบเจาะจง: การ์ดที่เนื้อหาไม่เปลี่ยนจะไม่ถูกวาดใหม่
         function patchFeed(container, cards) {
             [...container.children].forEach(el => { if (!el.dataset.postId) el.remove(); });
@@ -2039,7 +2058,7 @@
                                     ${getLikedByText(post)}
                                 </span>
                             </div>
-                            <span class="text-[13px] text-stone-400 font-light select-none shrink-0">${post.comments.length} ความคิดเห็น</span>
+                            <span class="text-[13px] text-stone-400 font-light select-none shrink-0">${post.loaded ? post.comments.length : '…'} ความคิดเห็น</span>
                         </div>
 
                         <!-- Action Buttons (Like / Comment) -->
@@ -2100,6 +2119,7 @@
                 `;
             });
             patchFeed(feedContainer, TIMELINE_POSTS.map((p, i) => ({ id: p.id, html: cards[i] })));
+            observePostCards(feedContainer);
             if (timelineHasMore) feedContainer.insertAdjacentHTML('beforeend', `
                 <div class="text-center pt-1">
                     <button onclick="loadMorePosts()" class="px-5 py-2.5 rounded-full bg-white border border-pink-300 hover:bg-pink-50 text-pink-700 text-xs font-semibold shadow-sm transition-all cursor-pointer">

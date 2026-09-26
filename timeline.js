@@ -10,11 +10,12 @@
 
 const POST_MAX_CHARS = 1000;
 const COMMENT_MAX_CHARS = 300;
-const TIMELINE_PAGE = 20; // โหลดทีละ 20 โพสต์ (ประหยัดโควตาอ่านของ Firebase แบบฟรี)
+const TIMELINE_PAGE = 10; // โหลดทีละ 10 โพสต์ (ประหยัดโควตาอ่านของ Firebase แบบฟรี)
 
-// ฟังโพสต์ล่าสุด `limit` โพสต์ + ถูกใจ/ความคิดเห็นเฉพาะของโพสต์ที่โหลดอยู่
-// onChange([{ id, ...post, likes: [userId], comments: [...] }], { hasMore })
-// คืน { stop(), showMore() }
+// ฟังโพสต์ล่าสุด `limit` โพสต์ — ถูกใจ/ความคิดเห็นโหลดเฉพาะโพสต์ที่เลื่อนมาถึง (watchPosts)
+// onChange([{ id, ...post, loaded, likes: [userId], comments: [...] }], { hasMore })
+//   loaded = โหลดถูกใจและความคิดเห็นของโพสต์นั้นแล้ว
+// คืน { stop(), showMore(), watchPosts(ids) }
 function subscribeTimeline(onChange, onError) {
   const db = authDb();
   const fail = (err) => onError && onError(err);
@@ -22,31 +23,34 @@ function subscribeTimeline(onChange, onError) {
   let posts = null;
   let hasMore = false;
   let postsUnsub = null;
-  const perPost = new Map(); // postId → { likes, comments, unsubs }
+  const perPost = new Map(); // postId → { likes, comments, likesReady, commentsReady, unsubs }
 
   const emit = () => {
     if (!posts) return;
     onChange(posts.filter((p) => !p.deleted).map((p) => {
-      const extra = perPost.get(p.id) || { likes: [], comments: [] };
+      const extra = perPost.get(p.id);
       return {
         ...p,
-        likes: extra.likes.filter((l) => l.on).sort((a, b) => a.at - b.at).map((l) => l.userId),
-        comments: extra.comments.filter((c) => !c.deleted).sort((a, b) => a.createdAt - b.createdAt),
+        loaded: !!(extra && extra.likesReady && extra.commentsReady),
+        likes: extra ? extra.likes.filter((l) => l.on).sort((a, b) => a.at - b.at).map((l) => l.userId) : [],
+        comments: extra ? extra.comments.filter((c) => !c.deleted).sort((a, b) => a.createdAt - b.createdAt) : [],
       };
     }), { hasMore });
   };
 
   const watchPost = (postId) => {
     if (perPost.has(postId)) return;
-    const entry = { likes: [], comments: [], unsubs: [] };
+    const entry = { likes: [], comments: [], likesReady: false, commentsReady: false, unsubs: [] };
     perPost.set(postId, entry);
     const ref = db.collection('posts').doc(postId);
     entry.unsubs.push(ref.collection('likes').onSnapshot((snap) => {
       entry.likes = snap.docs.map((d) => ({ userId: d.id, ...d.data() }));
+      entry.likesReady = true;
       emit();
     }, fail));
     entry.unsubs.push(ref.collection('comments').onSnapshot((snap) => {
       entry.comments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      entry.commentsReady = true;
       emit();
     }, fail));
   };
@@ -62,9 +66,9 @@ function subscribeTimeline(onChange, onError) {
     postsUnsub = db.collection('posts').orderBy('createdAt', 'desc').limit(limit).onSnapshot((snap) => {
       posts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       hasMore = snap.size >= limit;
-      const visible = new Set(posts.filter((p) => !p.deleted).map((p) => p.id));
-      [...perPost.keys()].forEach((id) => { if (!visible.has(id)) unwatchPost(id); });
-      visible.forEach(watchPost);
+      // โพสต์ที่หลุดจากรายการ (ถูกลบ / เก่าเกิน) → เลิกฟังถูกใจ/ความคิดเห็น
+      const listed = new Set(posts.filter((p) => !p.deleted).map((p) => p.id));
+      [...perPost.keys()].forEach((id) => { if (!listed.has(id)) unwatchPost(id); });
       emit();
     }, fail);
   };
@@ -78,6 +82,11 @@ function subscribeTimeline(onChange, onError) {
     showMore() {
       limit += TIMELINE_PAGE;
       listenPosts();
+    },
+    // เริ่มโหลดถูกใจ/ความคิดเห็นของโพสต์ที่กำลังจะแสดงบนจอ (ฟังต่อจนกว่าโพสต์หลุดจากรายการ)
+    watchPosts(ids) {
+      const listed = new Set((posts || []).filter((p) => !p.deleted).map((p) => p.id));
+      ids.filter((id) => listed.has(id)).forEach(watchPost);
     },
   };
 }
