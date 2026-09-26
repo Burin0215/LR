@@ -201,9 +201,9 @@ function deletePostComment(postId, comment, asUser, byKey) {
   });
 }
 
-// แจ้งเตือนการแท็กของฉัน 30 รายการล่าสุด (id เรียงใหม่ → เก่าอยู่แล้ว)
+// แจ้งเตือนการแท็กของฉัน 15 รายการล่าสุด (id เรียงใหม่ → เก่าอยู่แล้ว)
 function subscribeMyMentions(userId, onChange, onError) {
-  return authDb().collection('mentions').where('to', '==', userId).limit(30).onSnapshot(
+  return authDb().collection('mentions').where('to', '==', userId).limit(15).onSnapshot(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt - a.createdAt)),
     (err) => onError && onError(err));
 }

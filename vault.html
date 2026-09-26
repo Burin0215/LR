@@ -7,9 +7,9 @@
     <!-- รายชื่อผู้ใช้ + ตรวจ/เปลี่ยน PIN ผ่าน Firebase (Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260927"></script>
-    <script src="auth.js?v=20260927"></script>
-    <script src="inventory.js?v=20260927"></script>
+    <script src="firebase-config.js?v=20260927b"></script>
+    <script src="auth.js?v=20260927b"></script>
+    <script src="inventory.js?v=20260927b"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -619,6 +619,12 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <!-- โหลดทีละ 50 รายการ (ประหยัดโควตาอ่าน) -->
+                <div v-if="adminLogsHasMore" class="text-center">
+                    <button @click="loadMoreAdminLogs" class="px-5 py-2.5 rounded-full bg-white border border-cream-300 hover:bg-cream-100 text-gray-700 text-xs font-semibold shadow-xs">
+                        <i class="fa-solid fa-chevron-down text-[12px] mr-1"></i> ดูประวัติเพิ่มเติม
+                    </button>
                 </div>
             </section>
 
@@ -1740,15 +1746,30 @@
                 // ประวัติ + แจ้งเตือน: โหลดตามสิทธิ์ของผู้ใช้ (ประหยัดโควตาอ่านของ Firebase)
                 let logsUnsub = null;
                 let notificationsUnsub = null;
-                watch(() => [currentIdentity.value && currentIdentity.value.id, isAdmin.value], ([id, admin]) => {
+                const ADMIN_LOGS_PAGE = 50;
+                const adminLogsLimit = ref(ADMIN_LOGS_PAGE);
+                // ประวัติ: โหลดเฉพาะตอนเปิดแท็บประวัติ (Member = ของตัวเอง / Admin = ล่าสุดทีละ 50 หรือเฉพาะคนที่เลือก)
+                watch(() => [currentIdentity.value && currentIdentity.value.id, isAdmin.value, currentTab.value, adminLogsFilter.value, adminLogsLimit.value],
+                    ([id, admin, tab, filter, limit]) => {
                     if (logsUnsub) { logsUnsub(); logsUnsub = null; }
-                    if (notificationsUnsub) { notificationsUnsub(); notificationsUnsub = null; }
-                    inventoryLogs.value = [];
-                    adminNotifications.value = [];
-                    if (!id) return;
+                    const open = id && (admin ? tab === 'admin_logs' : tab === 'logs');
+                    if (!open) { inventoryLogs.value = []; return; }
                     try {
-                        logsUnsub = subscribeLogs((list) => { inventoryLogs.value = list; }, () => {}, admin ? undefined : id);
-                        if (admin) notificationsUnsub = subscribeNotifications((list) => { adminNotifications.value = list; }, () => {});
+                        const who = admin ? (filter !== 'all' ? filter : undefined) : id;
+                        logsUnsub = subscribeLogs((list) => { inventoryLogs.value = list; }, () => {}, who, limit);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }, { immediate: true });
+                const adminLogsHasMore = computed(() => adminLogsFilter.value === 'all' && inventoryLogs.value.length >= adminLogsLimit.value);
+                const loadMoreAdminLogs = () => { adminLogsLimit.value += ADMIN_LOGS_PAGE; };
+                // แจ้งเตือน Admin: ใช้กับกระดิ่ง จึงโหลดตลอดตอนเป็น Admin (30 รายการล่าสุด)
+                watch(() => isAdmin.value, (admin) => {
+                    if (notificationsUnsub) { notificationsUnsub(); notificationsUnsub = null; }
+                    adminNotifications.value = [];
+                    if (!admin) return;
+                    try {
+                        notificationsUnsub = subscribeNotifications((list) => { adminNotifications.value = list; }, () => {});
                     } catch (err) {
                         console.error(err);
                     }
@@ -2062,6 +2083,8 @@
                     myLogs,
                     adminLogsFilter,
                     adminFilteredLogs,
+                    adminLogsHasMore,
+                    loadMoreAdminLogs,
                     adminNotifications,
                     unreadAdminNotificationsCount,
                     markAllNotificationsAsRead,

@@ -56,11 +56,11 @@ function subscribeInventories(onChange, onError) {
     (err) => onError && onError(err));
 }
 
-// userId: ประวัติของคนนั้นเท่านั้น (Member) / ไม่ระบุ: ล่าสุดของทุกคน (Admin)
-// (ประหยัดโควตาอ่านของ Firebase แบบฟรี — Member ไม่ต้องโหลดประวัติของคนอื่น)
-function subscribeLogs(onChange, onError, userId) {
+// userId: ประวัติของคนนั้นเท่านั้น / ไม่ระบุ: ล่าสุดของทุกคน `limit` รายการ (Admin)
+// (ประหยัดโควตาอ่านของ Firebase แบบฟรี)
+function subscribeLogs(onChange, onError, userId, limit = 50) {
   const col = authDb().collection('logs');
-  const query = userId ? col.where('userId', '==', userId) : col.orderBy('timestamp', 'desc').limit(200);
+  const query = userId ? col.where('userId', '==', userId) : col.orderBy('timestamp', 'desc').limit(limit);
   return query.onSnapshot(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.timestamp - a.timestamp)),
     (err) => onError && onError(err));
@@ -74,7 +74,7 @@ function subscribeLogsBetween(start, end, onChange, onError) {
 }
 
 function subscribeNotifications(onChange, onError) {
-  return authDb().collection('notifications').orderBy('timestamp', 'desc').limit(100).onSnapshot(
+  return authDb().collection('notifications').orderBy('timestamp', 'desc').limit(30).onSnapshot(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((n) => !n.deleted)),
     (err) => onError && onError(err));
 }
@@ -139,10 +139,10 @@ function oneOnOneState(r, now = Date.now()) {
   return r.status;
 }
 
-// fromUser: เฉพาะคำขอของคนนั้น (Member) / ไม่ระบุ: 50 รายการล่าสุดของทุกคน (Admin)
+// fromUser: เฉพาะคำขอของคนนั้น (Member) / ไม่ระบุ: 30 รายการล่าสุดของทุกคน (Admin)
 function subscribeOneOnOne(onChange, onError, fromUser) {
   const col = authDb().collection('oneOnOne');
-  const query = fromUser ? col.where('from', '==', fromUser) : col.orderBy('createdAt', 'desc').limit(50);
+  const query = fromUser ? col.where('from', '==', fromUser) : col.orderBy('createdAt', 'desc').limit(30);
   return query.onSnapshot(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt - a.createdAt)),
     (err) => onError && onError(err));
