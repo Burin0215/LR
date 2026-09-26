@@ -296,7 +296,7 @@
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">{{ item.description }}</p>
 
-                                <!-- ดอกกุหลาบ: เลือกเหตุผลก่อน Add + ยอดแจกประจำสัปดาห์ (นับใหม่ทุกวันอาทิตย์ 00:00 = หลังเที่ยงคืนวันเสาร์, เตือนเมื่อเกิน 10) -->
+                                <!-- ดอกกุหลาบ: เลือกเหตุผลก่อน Add + ยอดแจกประจำสัปดาห์ (นับใหม่ทุกวันพุธ 00:00, เตือนเมื่อเกิน 10) -->
                                 <div v-if="item.id === 'rose'" class="mt-3 space-y-2">
                                     <div class="flex flex-wrap items-center gap-1.5 text-xs">
                                         <span class="text-gray-500 font-semibold mr-0.5">เหตุผลที่เพิ่ม:</span>
@@ -381,12 +381,12 @@
             </section>
 
             <!-- ADMIN TAB 3: ALL LOGS VIEW -->
-            <!-- ADMIN: สรุปดอกกุหลาบที่ Admin แจกประจำสัปดาห์ (สัปดาห์ = อาทิตย์–เสาร์) -->
+            <!-- ADMIN: สรุปดอกกุหลาบที่ Admin แจกประจำสัปดาห์ (สัปดาห์ = พุธ–อังคาร) -->
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_weekly'" class="space-y-6">
                 <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
                         <h2 class="text-lg font-bold text-gray-800 font-serif-title">สรุปดอกกุหลาบประจำสัปดาห์ 📅</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">นับทุกครั้งที่ Admin กดเพิ่ม (ยกเว้น "รางวัลอื่นๆ") · Delete ไม่ลดตัวนับ · โควตา {{ WEEKLY_ROSE_LIMIT }} ดอก/สัปดาห์ · รีเซ็ตหลังเที่ยงคืนวันเสาร์</p>
+                        <p class="text-xs text-gray-500 mt-0.5">นับทุกครั้งที่ Admin กดเพิ่ม (ยกเว้น "รางวัลอื่นๆ") · Delete ไม่ลดตัวนับ · โควตา {{ WEEKLY_ROSE_LIMIT }} ดอก/สัปดาห์ · รีเซ็ตทุกวันพุธ 00:00</p>
                     </div>
                     <div class="flex items-center gap-2 justify-between sm:justify-end">
                         <button @click="weeklyOffset--" class="w-9 h-9 rounded-xl bg-cream-100 hover:bg-cream-200 text-gray-600 border border-cream-300 flex items-center justify-center" title="สัปดาห์ก่อน">
@@ -1286,7 +1286,7 @@
                     rose_received: null
                 });
 
-                // ===== ดอกกุหลาบประจำสัปดาห์: Admin เลือกเหตุผลก่อน Add (นับใหม่หลังเที่ยงคืนวันเสาร์ = วันอาทิตย์ 00:00 เวลาไทย) =====
+                // ===== ดอกกุหลาบประจำสัปดาห์: Admin เลือกเหตุผลก่อน Add (นับใหม่ทุกวันพุธ 00:00 เวลาไทย) =====
                 const WEEKLY_ROSE_LIMIT = 10;
                 const WEEKLY_TAG = '[แจกประจำสัปดาห์]';
                 const OTHER_TAG = '[รางวัลอื่นๆ]';
@@ -1295,11 +1295,11 @@
                 const selectedLogs = ref([]);
                 const weeklyRoseLoading = ref(false);
 
-                // วันอาทิตย์ 00:00 (UTC+7) ล่าสุด
+                // วันพุธ 00:00 (UTC+7) ล่าสุด
                 const currentWeekStart = () => {
                     const TH = 7 * 3600e3;
                     const d = new Date(Date.now() + TH);
-                    const back = d.getUTCDay(); // 0 = วันอาทิตย์ → ย้อนกลับไปถึงวันอาทิตย์
+                    const back = (d.getUTCDay() - 3 + 7) % 7; // 3 = วันพุธ
                     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back) - TH;
                 };
                 const weekStartLabel = computed(() => {
