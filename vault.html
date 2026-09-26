@@ -7,9 +7,9 @@
     <!-- รายชื่อผู้ใช้ + ตรวจ/เปลี่ยน PIN ผ่าน Firebase (Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260926"></script>
-    <script src="auth.js?v=20260926"></script>
-    <script src="inventory.js?v=20260926"></script>
+    <script src="firebase-config.js?v=20260926b"></script>
+    <script src="auth.js?v=20260926b"></script>
+    <script src="inventory.js?v=20260926b"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -296,7 +296,7 @@
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">{{ item.description }}</p>
 
-                                <!-- ดอกกุหลาบ: เลือกเหตุผลก่อน Add + ยอดแจกประจำสัปดาห์ (นับใหม่ทุกวันพุธ, เตือนเมื่อเกิน 10) -->
+                                <!-- ดอกกุหลาบ: เลือกเหตุผลก่อน Add + ยอดแจกประจำสัปดาห์ (นับใหม่ทุกวันอาทิตย์ 00:00 = หลังเที่ยงคืนวันเสาร์, เตือนเมื่อเกิน 10) -->
                                 <div v-if="item.id === 'rose'" class="mt-3 space-y-2">
                                     <div class="flex flex-wrap items-center gap-1.5 text-xs">
                                         <span class="text-gray-500 font-semibold mr-0.5">เหตุผลที่เพิ่ม:</span>
@@ -381,6 +381,111 @@
             </section>
 
             <!-- ADMIN TAB 3: ALL LOGS VIEW -->
+            <!-- ADMIN: สรุปดอกกุหลาบที่ Admin แจกประจำสัปดาห์ (สัปดาห์ = อาทิตย์–เสาร์) -->
+            <section v-if="currentIdentity && isAdmin && currentTab === 'admin_weekly'" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800 font-serif-title">สรุปดอกกุหลาบประจำสัปดาห์ 📅</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">นับทุกครั้งที่ Admin กดเพิ่ม (ยกเว้น "รางวัลอื่นๆ") · Delete ไม่ลดตัวนับ · โควตา {{ WEEKLY_ROSE_LIMIT }} ดอก/สัปดาห์ · รีเซ็ตหลังเที่ยงคืนวันเสาร์</p>
+                    </div>
+                    <div class="flex items-center gap-2 justify-between sm:justify-end">
+                        <button @click="weeklyOffset--" class="w-9 h-9 rounded-xl bg-cream-100 hover:bg-cream-200 text-gray-600 border border-cream-300 flex items-center justify-center" title="สัปดาห์ก่อน">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                        <div class="text-center min-w-[11rem]">
+                            <div class="text-xs font-bold text-gray-800">{{ weeklyRangeLabel }}</div>
+                            <div class="text-[12px] text-gray-400">{{ weeklyOffset === 0 ? 'สัปดาห์นี้' : weeklyOffset === -1 ? 'สัปดาห์ที่แล้ว' : (-weeklyOffset) + ' สัปดาห์ก่อน' }}</div>
+                        </div>
+                        <button @click="weeklyOffset++" :disabled="weeklyOffset >= 0" class="w-9 h-9 rounded-xl bg-cream-100 hover:bg-cream-200 text-gray-600 border border-cream-300 flex items-center justify-center disabled:opacity-40" title="สัปดาห์ถัดไป">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                        <!-- Export: คัดลอกข้อความแจ้งเตือนโควต้า ไปวางในแชท -->
+                        <button @click="exportWeeklyQuota" :disabled="weeklySummaryLoading"
+                                class="h-9 px-3.5 rounded-xl bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap" title="คัดลอกข้อความแจ้งเตือนโควต้า">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>Export</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ภาพรวม -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white rounded-2xl border border-cream-200 soft-card-shadow p-4">
+                        <div class="text-xs text-gray-500">แจกประจำสัปดาห์รวม</div>
+                        <div class="text-2xl font-extrabold font-serif-title text-rosepink-600">{{ weeklySummaryTotals.weekly }} <span class="text-xs font-medium text-gray-400">ดอก</span></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-cream-200 soft-card-shadow p-4">
+                        <div class="text-xs text-gray-500">รางวัลอื่นๆ รวม</div>
+                        <div class="text-2xl font-extrabold font-serif-title text-amber-600">{{ weeklySummaryTotals.other }} <span class="text-xs font-medium text-gray-400">ดอก</span></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-cream-200 soft-card-shadow p-4">
+                        <div class="text-xs text-gray-500">ครบโควตาแล้ว</div>
+                        <div class="text-2xl font-extrabold font-serif-title text-emerald-600">{{ weeklySummaryTotals.full }} <span class="text-xs font-medium text-gray-400">คน</span></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-cream-200 soft-card-shadow p-4">
+                        <div class="text-xs text-gray-500">เกินโควตา</div>
+                        <div class="text-2xl font-extrabold font-serif-title text-red-600">{{ weeklySummaryTotals.over }} <span class="text-xs font-medium text-gray-400">คน</span></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-cream-200 overflow-hidden soft-card-shadow">
+                    <div v-if="weeklySummaryLoading" class="p-8 text-center text-xs text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังโหลด...</div>
+                    <template v-else>
+                        <!-- จอคอม: ตาราง -->
+                        <table class="hidden sm:table w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-cream-100/70 border-b border-cream-200 text-cream-500 font-semibold uppercase tracking-wider text-[13px]">
+                                    <th class="py-3.5 px-6">Member</th>
+                                    <th class="py-3.5 px-6">แจกประจำสัปดาห์</th>
+                                    <th class="py-3.5 px-6 text-center">รางวัลอื่นๆ</th>
+                                    <th class="py-3.5 px-6 text-center">สถานะ</th>
+                                    <th class="py-3.5 px-6"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-cream-100">
+                                <tr v-for="row in weeklySummary" :key="row.visitor.id" class="hover:bg-rosepink-50/30 transition">
+                                    <td class="py-3.5 px-6 font-bold text-gray-800 whitespace-nowrap"><span class="text-lg mr-1.5">{{ row.visitor.avatar }}</span>{{ row.visitor.name }}</td>
+                                    <td class="py-3.5 px-6 min-w-[14rem]">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex-1 h-2 rounded-full bg-cream-100 overflow-hidden">
+                                                <div class="h-full rounded-full" :class="row.weekly > WEEKLY_ROSE_LIMIT ? 'bg-red-500' : row.weekly === WEEKLY_ROSE_LIMIT ? 'bg-emerald-500' : 'bg-rosepink-400'"
+                                                     :style="{ width: Math.min(100, row.weekly / WEEKLY_ROSE_LIMIT * 100) + '%' }"></div>
+                                            </div>
+                                            <b class="whitespace-nowrap" :class="row.weekly > WEEKLY_ROSE_LIMIT ? 'text-red-600' : 'text-gray-800'">{{ row.weekly }} / {{ WEEKLY_ROSE_LIMIT }}</b>
+                                        </div>
+                                    </td>
+                                    <td class="py-3.5 px-6 text-center font-semibold text-amber-600">{{ row.other || '–' }}</td>
+                                    <td class="py-3.5 px-6 text-center">
+                                        <span class="px-2.5 py-1 rounded-full font-semibold whitespace-nowrap" :class="row.statusClass">{{ row.status }}</span>
+                                    </td>
+                                    <td class="py-3.5 px-6 text-right">
+                                        <button @click="viewVisitorInventory(row.visitor)" class="px-3 py-1.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-lg whitespace-nowrap">เปิดคลัง <i class="fa-solid fa-chevron-right text-[12px] ml-0.5"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- มือถือ: การ์ด -->
+                        <div class="sm:hidden divide-y divide-cream-100">
+                            <button v-for="row in weeklySummary" :key="row.visitor.id" @click="viewVisitorInventory(row.visitor)" class="w-full text-left p-4 space-y-2 active:bg-rosepink-50/40">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-bold text-gray-800 text-sm"><span class="text-lg mr-1">{{ row.visitor.avatar }}</span>{{ row.visitor.name }}</span>
+                                    <span class="px-2.5 py-0.5 rounded-full font-semibold text-xs whitespace-nowrap" :class="row.statusClass">{{ row.status }}</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-xs">
+                                    <div class="flex-1 h-2 rounded-full bg-cream-100 overflow-hidden">
+                                        <div class="h-full rounded-full" :class="row.weekly > WEEKLY_ROSE_LIMIT ? 'bg-red-500' : row.weekly === WEEKLY_ROSE_LIMIT ? 'bg-emerald-500' : 'bg-rosepink-400'"
+                                             :style="{ width: Math.min(100, row.weekly / WEEKLY_ROSE_LIMIT * 100) + '%' }"></div>
+                                    </div>
+                                    <b class="whitespace-nowrap" :class="row.weekly > WEEKLY_ROSE_LIMIT ? 'text-red-600' : 'text-gray-800'">{{ row.weekly }} / {{ WEEKLY_ROSE_LIMIT }}</b>
+                                </div>
+                                <div v-if="row.other" class="text-xs text-amber-600">🎁 รางวัลอื่นๆ {{ row.other }} ดอก</div>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
             <section v-if="currentIdentity && isAdmin && currentTab === 'admin_logs'" class="space-y-6">
                 <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-3xl border border-cream-200 soft-card-shadow">
                     <div>
@@ -792,6 +897,17 @@
             </div>
         </div>
 
+        <!-- Export สำรอง: แสดงข้อความให้กดค้างคัดลอกเอง (เบราว์เซอร์บางตัวไม่อนุญาตให้คัดลอกอัตโนมัติ) -->
+        <div v-if="exportText" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs" @click.self="exportText = ''">
+            <div class="bg-white w-full max-w-md rounded-3xl border border-cream-200 shadow-2xl p-5 space-y-3">
+                <h3 class="text-sm font-bold text-gray-800 font-serif-title">คัดลอกข้อความแจ้งเตือนโควต้า</h3>
+                <p class="text-xs text-gray-500">คัดลอกอัตโนมัติไม่สำเร็จ — กดค้างที่ข้อความแล้วเลือก "คัดลอก"</p>
+                <textarea readonly rows="12" :value="exportText" @focus="$event.target.select()"
+                          class="w-full px-3 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none"></textarea>
+                <button @click="exportText = ''" class="w-full py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ปิด</button>
+            </div>
+        </div>
+
         <!-- เตือน: ดอกกุหลาบประจำสัปดาห์เกิน 10 (Admin ยืนยันเพิ่มต่อได้) -->
         <div v-if="weeklyWarn" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl p-6 text-center space-y-4">
@@ -1170,7 +1286,7 @@
                     rose_received: null
                 });
 
-                // ===== ดอกกุหลาบประจำสัปดาห์: Admin เลือกเหตุผลก่อน Add (นับใหม่ทุกวันพุธ 00:00 เวลาไทย) =====
+                // ===== ดอกกุหลาบประจำสัปดาห์: Admin เลือกเหตุผลก่อน Add (นับใหม่หลังเที่ยงคืนวันเสาร์ = วันอาทิตย์ 00:00 เวลาไทย) =====
                 const WEEKLY_ROSE_LIMIT = 10;
                 const WEEKLY_TAG = '[แจกประจำสัปดาห์]';
                 const OTHER_TAG = '[รางวัลอื่นๆ]';
@@ -1179,26 +1295,103 @@
                 const selectedLogs = ref([]);
                 const weeklyRoseLoading = ref(false);
 
-                // วันพุธ 00:00 (UTC+7) ล่าสุด
+                // วันอาทิตย์ 00:00 (UTC+7) ล่าสุด
                 const currentWeekStart = () => {
                     const TH = 7 * 3600e3;
                     const d = new Date(Date.now() + TH);
-                    const back = (d.getUTCDay() - 3 + 7) % 7; // 3 = วันพุธ
+                    const back = d.getUTCDay(); // 0 = วันอาทิตย์ → ย้อนกลับไปถึงวันอาทิตย์
                     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back) - TH;
                 };
                 const weekStartLabel = computed(() => {
                     selectedLogs.value; // คำนวณใหม่เมื่อข้อมูลอัปเดต
                     return new Date(currentWeekStart()).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
                 });
-                // นับทุกครั้งที่ Admin กดเพิ่มดอกกุหลาบในสัปดาห์นี้ (รวมที่แจกก่อนมีตัวเลือกเหตุผล)
+                // Admin เพิ่มดอกกุหลาบ: นับเป็น "ประจำสัปดาห์" ทุกครั้ง (รวมที่แจกก่อนมีตัวเลือกเหตุผล)
                 // ยกเว้นที่เลือก "รางวัลอื่นๆ" — การ Delete ไม่ลดตัวนับ (นับเฉพาะการเพิ่ม)
+                const isAdminRoseAdd = (l) => l.itemId === 'rose' && l.changeType === 'add' && (l.adminNote || '').startsWith('[Admin:');
+                const isWeeklyRoseAdd = (l) => isAdminRoseAdd(l) && !(l.adminNote || '').includes(OTHER_TAG);
+                const isOtherRoseAdd = (l) => isAdminRoseAdd(l) && (l.adminNote || '').includes(OTHER_TAG);
+
                 const weeklyRoseCount = computed(() => {
                     const start = currentWeekStart();
                     return selectedLogs.value
-                        .filter(l => l.itemId === 'rose' && l.changeType === 'add' && l.timestamp >= start
-                            && (l.adminNote || '').startsWith('[Admin:') && !(l.adminNote || '').includes(OTHER_TAG))
+                        .filter(l => l.timestamp >= start && isWeeklyRoseAdd(l))
                         .reduce((sum, l) => sum + (l.amount || 0), 0);
                 });
+
+                // ===== ตารางสรุปประจำสัปดาห์ (แท็บ admin_weekly) — โหลดเฉพาะตอนเปิดแท็บ =====
+                const WEEK_MS = 7 * 86400e3;
+                const weeklyOffset = ref(0); // 0 = สัปดาห์นี้, -1 = สัปดาห์ที่แล้ว, ...
+                const weeklyLogs = ref([]);
+                const weeklySummaryLoading = ref(false);
+                const weeklyRange = computed(() => {
+                    const start = currentWeekStart() + weeklyOffset.value * WEEK_MS;
+                    return { start, end: start + WEEK_MS };
+                });
+                const weeklyRangeLabel = computed(() => {
+                    const fmt = (t) => new Date(t).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+                    return `${fmt(weeklyRange.value.start)} – ${fmt(weeklyRange.value.end - 1)}`;
+                });
+                let weeklyLogsUnsub = null;
+                watch(() => [isAdmin.value && currentTab.value === 'admin_weekly', weeklyRange.value.start], ([open]) => {
+                    if (weeklyLogsUnsub) { weeklyLogsUnsub(); weeklyLogsUnsub = null; }
+                    weeklyLogs.value = [];
+                    if (!open) return;
+                    weeklySummaryLoading.value = true;
+                    try {
+                        weeklyLogsUnsub = subscribeLogsBetween(weeklyRange.value.start, weeklyRange.value.end,
+                            (list) => { weeklyLogs.value = list; weeklySummaryLoading.value = false; },
+                            (err) => { weeklySummaryLoading.value = false; triggerToast('โหลดสรุปไม่ได้: ' + (err && err.message ? err.message : err)); });
+                    } catch (err) {
+                        weeklySummaryLoading.value = false;
+                    }
+                }, { immediate: true });
+                const weeklySummary = computed(() => visitorIdentities.value.map(visitor => {
+                    const mine = weeklyLogs.value.filter(l => l.userId === visitor.id);
+                    const weekly = mine.filter(isWeeklyRoseAdd).reduce((s, l) => s + (l.amount || 0), 0);
+                    const other = mine.filter(isOtherRoseAdd).reduce((s, l) => s + (l.amount || 0), 0);
+                    const status = weekly > WEEKLY_ROSE_LIMIT ? `⚠️ เกิน ${weekly - WEEKLY_ROSE_LIMIT}`
+                        : weekly === WEEKLY_ROSE_LIMIT ? '✅ ครบ'
+                        : weekly === 0 ? 'ยังไม่ได้รับ' : `ขาดอีก ${WEEKLY_ROSE_LIMIT - weekly}`;
+                    const statusClass = weekly > WEEKLY_ROSE_LIMIT ? 'bg-red-50 text-red-600 border border-red-200'
+                        : weekly === WEEKLY_ROSE_LIMIT ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : weekly === 0 ? 'bg-gray-50 text-gray-400 border border-gray-200'
+                        : 'bg-rosepink-50 text-rosepink-600 border border-rosepink-200';
+                    return { visitor, weekly, other, status, statusClass };
+                }));
+                const weeklySummaryTotals = computed(() => ({
+                    weekly: weeklySummary.value.reduce((s, r) => s + r.weekly, 0),
+                    other: weeklySummary.value.reduce((s, r) => s + r.other, 0),
+                    full: weeklySummary.value.filter(r => r.weekly === WEEKLY_ROSE_LIMIT).length,
+                    over: weeklySummary.value.filter(r => r.weekly > WEEKLY_ROSE_LIMIT).length,
+                }));
+
+                // Export: ข้อความแจ้งเตือนโควต้าประจำสัปดาห์ (คัดลอกไปวางในแชท)
+                const exportText = ref('');
+                const buildWeeklyQuotaText = () => {
+                    const { start, end } = weeklyRange.value;
+                    const day = (t, withYear) => new Date(t).toLocaleDateString('th-TH', withYear ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' });
+                    const lines = weeklySummary.value.map(r => {
+                        const left = Math.max(0, WEEKLY_ROSE_LIMIT - r.weekly);
+                        const extra = r.weekly > WEEKLY_ROSE_LIMIT ? ` (เกินโควต้า ${r.weekly - WEEKLY_ROSE_LIMIT} ดอก)` : r.weekly === WEEKLY_ROSE_LIMIT ? ' (ครบแล้ว)' : '';
+                        return `${r.visitor.avatar} ${r.visitor.name} เหลือ ${left} ดอก${extra}`;
+                    });
+                    return [
+                        `🌹 แจ้งเตือนโควต้าดอกกุหลาบประจำสัปดาห์ (${day(start)} – ${day(end - 1, true)})`,
+                        `โควต้า ${WEEKLY_ROSE_LIMIT} ดอก/คน/สัปดาห์`,
+                        '',
+                        ...lines,
+                    ].join('\n');
+                };
+                const exportWeeklyQuota = async () => {
+                    const text = buildWeeklyQuotaText();
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        triggerToast('คัดลอกข้อความแจ้งเตือนโควต้าแล้ว ✅ วางในแชทได้เลย');
+                    } catch (err) {
+                        exportText.value = text; // คัดลอกเองจากหน้าต่าง
+                    }
+                };
 
                 // ประวัติของ Member ที่เลือก (ใช้นับยอดประจำสัปดาห์) — โหลดเฉพาะตอนเปิดหน้าคลังของ Member
                 let selectedLogsUnsub = null;
@@ -1259,6 +1452,7 @@
                         return [
                             { id: 'admin_visitors', name: 'รายชื่อ Members 👥', icon: 'fa-solid fa-users text-rosepink-400' },
                             { id: 'admin_visitor_inventory', name: selectedVisitorForAdmin.value ? `คลังของ ${selectedVisitorForAdmin.value.name} 🎒` : 'คลัง Member 🎒', icon: 'fa-solid fa-bag-shopping text-rosepink-400' },
+                            { id: 'admin_weekly', name: 'สรุปประจำสัปดาห์ 📅', icon: 'fa-solid fa-calendar-week text-rosepink-400' },
                             { id: 'admin_logs', name: 'ประวัติ Logs ทั้งหมด 📝', icon: 'fa-solid fa-history' }
                         ];
                     }
@@ -1699,6 +1893,14 @@
                     weeklyRoseLoading,
                     weekStartLabel,
                     confirmWeeklyOverLimit,
+                    weeklyOffset,
+                    weeklyRangeLabel,
+                    weeklySummary,
+                    weeklySummaryTotals,
+                    weeklySummaryLoading,
+                    exportText,
+                    exportWeeklyQuota,
+                    buildWeeklyQuotaText,
                     adminResetAllInventories,
                     selectedIdentityId,
                     pendingIdentity,

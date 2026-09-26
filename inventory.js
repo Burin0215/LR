@@ -66,6 +66,13 @@ function subscribeLogs(onChange, onError, userId) {
     (err) => onError && onError(err));
 }
 
+// ประวัติของทุกคนในช่วงเวลา [start, end) — ใช้สรุปดอกประจำสัปดาห์ (Admin)
+function subscribeLogsBetween(start, end, onChange, onError) {
+  return authDb().collection('logs').where('timestamp', '>=', start).where('timestamp', '<', end).onSnapshot(
+    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => onError && onError(err));
+}
+
 function subscribeNotifications(onChange, onError) {
   return authDb().collection('notifications').orderBy('timestamp', 'desc').limit(100).onSnapshot(
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((n) => !n.deleted)),
