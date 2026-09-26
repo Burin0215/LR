@@ -295,6 +295,30 @@
                                     </span>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-1">{{ item.description }}</p>
+
+                                <!-- ดอกกุหลาบ: เลือกเหตุผลก่อน Add + ยอดแจกประจำสัปดาห์ (นับใหม่ทุกวันพุธ, เตือนเมื่อเกิน 10) -->
+                                <div v-if="item.id === 'rose'" class="mt-3 space-y-2">
+                                    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                                        <span class="text-gray-500 font-semibold mr-0.5">เหตุผลที่เพิ่ม:</span>
+                                        <button type="button" @click="roseReason = 'weekly'"
+                                                class="px-3 py-1.5 rounded-full border font-semibold transition"
+                                                :class="roseReason === 'weekly' ? 'bg-rosepink-500 text-white border-rosepink-500' : 'bg-white text-gray-600 border-cream-300 hover:border-rosepink-300'">📅 แจกประจำสัปดาห์</button>
+                                        <button type="button" @click="roseReason = 'other'"
+                                                class="px-3 py-1.5 rounded-full border font-semibold transition"
+                                                :class="roseReason === 'other' ? 'bg-rosepink-500 text-white border-rosepink-500' : 'bg-white text-gray-600 border-cream-300 hover:border-rosepink-300'">🎁 รางวัลอื่นๆ</button>
+                                    </div>
+                                    <div class="text-xs">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-gray-500">ประจำสัปดาห์นี้ <span class="text-gray-400">(ตั้งแต่ {{ weekStartLabel }})</span></span>
+                                            <b :class="weeklyRoseCount >= WEEKLY_ROSE_LIMIT ? 'text-red-600' : 'text-rosepink-600'">{{ weeklyRoseLoading ? '…' : weeklyRoseCount }} / {{ WEEKLY_ROSE_LIMIT }} ดอก</b>
+                                        </div>
+                                        <div class="h-1.5 mt-1 rounded-full bg-cream-100 overflow-hidden">
+                                            <div class="h-full rounded-full transition-all" :class="weeklyRoseCount >= WEEKLY_ROSE_LIMIT ? 'bg-red-500' : 'bg-rosepink-400'"
+                                                 :style="{ width: Math.min(100, weeklyRoseCount / WEEKLY_ROSE_LIMIT * 100) + '%' }"></div>
+                                        </div>
+                                        <p v-if="weeklyRoseCount >= WEEKLY_ROSE_LIMIT" class="text-red-600 font-semibold mt-1">⚠️ ครบ {{ WEEKLY_ROSE_LIMIT }} ดอกประจำสัปดาห์แล้ว</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -768,6 +792,25 @@
             </div>
         </div>
 
+        <!-- เตือน: ดอกกุหลาบประจำสัปดาห์เกิน 10 (Admin ยืนยันเพิ่มต่อได้) -->
+        <div v-if="weeklyWarn" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl p-6 text-center space-y-4">
+                <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center text-3xl mx-auto border border-amber-200">⚠️</div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 font-serif-title">เกินโควตาประจำสัปดาห์</h3>
+                    <p class="text-sm text-gray-600 mt-2">
+                        {{ weeklyWarn.name }} ได้ดอกประจำสัปดาห์นี้ไปแล้ว <b>{{ weeklyWarn.current }}/{{ WEEKLY_ROSE_LIMIT }}</b> ดอก
+                        ถ้าเพิ่มอีก <b>{{ weeklyWarn.amount }}</b> ดอก จะเป็น <b class="text-red-600">{{ weeklyWarn.current + weeklyWarn.amount }}/{{ WEEKLY_ROSE_LIMIT }}</b>
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">ถ้าเป็นรางวัลอื่น ให้เลือก "🎁 รางวัลอื่นๆ" แทน</p>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="weeklyWarn = null" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ยกเลิก</button>
+                    <button @click="confirmWeeklyOverLimit" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md">ยืนยันเพิ่ม</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Insufficient ELU Coins Modal -->
         <div v-if="modals.insufficientCoinsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <div class="bg-white w-full max-w-sm rounded-3xl border border-cream-200 shadow-2xl overflow-hidden p-6 text-center space-y-4">
@@ -1127,6 +1170,57 @@
                     rose_received: null
                 });
 
+                // ===== ดอกกุหลาบประจำสัปดาห์: Admin เลือกเหตุผลก่อน Add (นับใหม่ทุกวันพุธ 00:00 เวลาไทย) =====
+                const WEEKLY_ROSE_LIMIT = 10;
+                const WEEKLY_TAG = '[แจกประจำสัปดาห์]';
+                const OTHER_TAG = '[รางวัลอื่นๆ]';
+                const roseReason = ref(null); // 'weekly' | 'other' — ต้องเลือกทุกครั้งก่อน Add
+                const weeklyWarn = ref(null); // { name, current, amount, run } — หน้าต่างเตือนเกินโควตา
+                const selectedLogs = ref([]);
+                const weeklyRoseLoading = ref(false);
+
+                // วันพุธ 00:00 (UTC+7) ล่าสุด
+                const currentWeekStart = () => {
+                    const TH = 7 * 3600e3;
+                    const d = new Date(Date.now() + TH);
+                    const back = (d.getUTCDay() - 3 + 7) % 7; // 3 = วันพุธ
+                    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back) - TH;
+                };
+                const weekStartLabel = computed(() => {
+                    selectedLogs.value; // คำนวณใหม่เมื่อข้อมูลอัปเดต
+                    return new Date(currentWeekStart()).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+                });
+                // นับทุกครั้งที่ Admin กดเพิ่มดอกกุหลาบในสัปดาห์นี้ (รวมที่แจกก่อนมีตัวเลือกเหตุผล)
+                // ยกเว้นที่เลือก "รางวัลอื่นๆ" — การ Delete ไม่ลดตัวนับ (นับเฉพาะการเพิ่ม)
+                const weeklyRoseCount = computed(() => {
+                    const start = currentWeekStart();
+                    return selectedLogs.value
+                        .filter(l => l.itemId === 'rose' && l.changeType === 'add' && l.timestamp >= start
+                            && (l.adminNote || '').startsWith('[Admin:') && !(l.adminNote || '').includes(OTHER_TAG))
+                        .reduce((sum, l) => sum + (l.amount || 0), 0);
+                });
+
+                // ประวัติของ Member ที่เลือก (ใช้นับยอดประจำสัปดาห์) — โหลดเฉพาะตอนเปิดหน้าคลังของ Member
+                let selectedLogsUnsub = null;
+                watch(() => [isAdmin.value && currentTab.value === 'admin_visitor_inventory', selectedVisitorIdForAdmin.value], ([open, id]) => {
+                    if (selectedLogsUnsub) { selectedLogsUnsub(); selectedLogsUnsub = null; }
+                    selectedLogs.value = [];
+                    roseReason.value = null;
+                    if (!open || !id) return;
+                    weeklyRoseLoading.value = true;
+                    try {
+                        selectedLogsUnsub = subscribeLogs((list) => { selectedLogs.value = list; weeklyRoseLoading.value = false; }, () => { weeklyRoseLoading.value = false; }, id);
+                    } catch (err) {
+                        weeklyRoseLoading.value = false;
+                    }
+                }, { immediate: true });
+
+                const confirmWeeklyOverLimit = () => {
+                    const w = weeklyWarn.value;
+                    weeklyWarn.value = null;
+                    if (w) w.run();
+                };
+
                 // Add / Delete ใช้ช่องจำนวนเดียวกัน: Add = บวกเพิ่ม, Delete = ลบออก (ไม่ต่ำกว่า 0)
                 const adminApplyCustomValue = (itemId, sign) => {
                     const val = adminInputValues.value[itemId];
@@ -1134,7 +1228,27 @@
                         triggerToast(sign > 0 ? 'กรุณากรอกตัวเลขจำนวนที่ต้องการเพิ่ม' : 'กรุณากรอกตัวเลขจำนวนที่ต้องการลบ');
                         return;
                     }
-                    adminAdjustSelectedVisitorItem(itemId, sign * Math.abs(Number(val)));
+                    const amount = Math.abs(Number(val));
+                    // เพิ่มดอกกุหลาบ: ต้องเลือกเหตุผลก่อน / ประจำสัปดาห์เกิน 10 → เตือน (ยืนยันแล้วเพิ่มได้)
+                    if (itemId === 'rose' && sign > 0) {
+                        if (!roseReason.value) {
+                            triggerToast('กรุณาเลือกเหตุผลก่อน: 📅 แจกประจำสัปดาห์ หรือ 🎁 รางวัลอื่นๆ');
+                            return;
+                        }
+                        const reason = roseReason.value;
+                        const run = async () => {
+                            const ok = await adminAdjustSelectedVisitorItem(itemId, amount, reason);
+                            if (ok) { adminInputValues.value[itemId] = null; roseReason.value = null; }
+                        };
+                        const current = weeklyRoseCount.value;
+                        if (reason === 'weekly' && current + amount > WEEKLY_ROSE_LIMIT) {
+                            weeklyWarn.value = { name: selectedVisitorForAdmin.value.name, current, amount, run };
+                            return;
+                        }
+                        run();
+                        return;
+                    }
+                    adminAdjustSelectedVisitorItem(itemId, sign * amount);
                     adminInputValues.value[itemId] = null;
                 };
                 const adminAddCustomValue = (itemId) => adminApplyCustomValue(itemId, 1);
@@ -1194,18 +1308,20 @@
                     return 'ทำรายการไม่สำเร็จ: ' + (err && err.message ? err.message : err);
                 };
 
-                const adminAdjustSelectedVisitorItem = (itemId, delta) =>
-                    adminAdjustVisitorItem(selectedVisitorForAdmin.value, itemId, delta);
+                const adminAdjustSelectedVisitorItem = (itemId, delta, reason) =>
+                    adminAdjustVisitorItem(selectedVisitorForAdmin.value, itemId, delta, reason);
 
-                const adminAdjustVisitorItem = async (visitor, itemId, delta) => {
-                    if (!visitor || !isAdmin.value) return;
+                // reason (เฉพาะเพิ่มดอกกุหลาบ): 'weekly' = แจกประจำสัปดาห์ / 'other' = รางวัลอื่นๆ — คืน true เมื่อบันทึกสำเร็จ
+                const adminAdjustVisitorItem = async (visitor, itemId, delta, reason) => {
+                    if (!visitor || !isAdmin.value) return false;
                     const key = requireKey();
-                    if (!key) return;
+                    if (!key) return false;
                     const field = ITEM_FIELDS[itemId];
                     const prev = inventoryFor(visitor.id);
                     const next = { ...prev, [field]: Math.max(0, prev[field] + delta) };
                     const diff = next[field] - prev[field];
-                    if (diff === 0) return;
+                    if (diff === 0) return false;
+                    const reasonTag = reason === 'weekly' ? WEEKLY_TAG : reason === 'other' ? OTHER_TAG : '';
                     const adminName = currentIdentity.value ? currentIdentity.value.name : 'Admin';
                     const item = defaultInventoryItems.find(i => i.id === itemId);
                     const isReceived = itemId === 'rose_received';
@@ -1215,13 +1331,18 @@
                             updates: [{ user: visitor.id, next }],
                             logs: [{
                                 userId: visitor.id, itemId, changeType: diff > 0 ? 'add' : 'remove', amount: Math.abs(diff),
-                                note: isReceived ? (diff > 0 ? 'ได้รับดอกกุหลาบ (ไม่เปิดเผยตัวตน) 💌' : 'ปรับลดกุหลาบที่ได้รับ') : 'ปรับยอดของในคลัง',
-                                adminNote: `[Admin: ${adminName}] ปรับยอด${isReceived ? 'กุหลาบที่ได้รับ' : ''}ของ ${visitor.name}`
+                                note: isReceived ? (diff > 0 ? 'ได้รับดอกกุหลาบ (ไม่เปิดเผยตัวตน) 💌' : 'ปรับลดกุหลาบที่ได้รับ')
+                                    : reason === 'weekly' ? 'ได้รับดอกกุหลาบประจำสัปดาห์ 🌹'
+                                    : reason === 'other' ? 'ได้รับดอกกุหลาบจากรางวัล 🎁'
+                                    : 'ปรับยอดของในคลัง',
+                                adminNote: `[Admin: ${adminName}]${reasonTag ? ' ' + reasonTag : ''} ปรับยอด${isReceived ? 'กุหลาบที่ได้รับ' : ''}ของ ${visitor.name}`
                             }]
                         });
                         triggerToast(`อัปเดต ${item.name} ของ ${visitor.name} เป็น ${next[field]} ${item.unit}`);
+                        return true;
                     } catch (err) {
                         triggerToast(inventoryErrorText(err));
+                        return false;
                     }
                 };
 
@@ -1571,6 +1692,13 @@
                     adminInputValues,
                     adminAddCustomValue,
                     adminDeleteCustomValue,
+                    WEEKLY_ROSE_LIMIT,
+                    roseReason,
+                    weeklyWarn,
+                    weeklyRoseCount,
+                    weeklyRoseLoading,
+                    weekStartLabel,
+                    confirmWeeklyOverLimit,
                     adminResetAllInventories,
                     selectedIdentityId,
                     pendingIdentity,
