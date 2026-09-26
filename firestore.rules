@@ -177,6 +177,37 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Request 1:1 — นับถอยหลัง 24 ชม. หลัง Admin กด Start (doc id = id ใบอนุญาตของคำขอ = รหัสอ้างอิง)
+    // oneOnOne/{op} = { from, to, createdAt, status: waiting|running|stopped, startedAt, endsAt, startedBy, stoppedAt, op, edit }
+    match /oneOnOne/{r} {
+      allow read: if true;
+      // สร้างพร้อมคำขอ (ชุดเดียวกับการหักตั๋ว/ดอก) — ผู้ขอ/ผู้ถูกขอต้องตรงกับใบอนุญาต
+      allow create: if request.resource.data.keys().hasOnly(['from', 'to', 'createdAt', 'status', 'startedAt', 'endsAt', 'startedBy', 'stoppedAt', 'op', 'edit'])
+                    && r == request.resource.data.op
+                    && freshOp(r)
+                    && opAfter(r).kind == 'request'
+                    && opAfter(r).from == request.resource.data.from
+                    && opAfter(r).to == request.resource.data.to
+                    && request.resource.data.status == 'waiting'
+                    && request.resource.data.startedAt == 0
+                    && request.resource.data.endsAt == 0
+                    && request.resource.data.startedBy == ''
+                    && request.resource.data.stoppedAt == 0
+                    && request.resource.data.edit == ''
+                    && nowish(request.resource.data.createdAt);
+      // Admin เท่านั้น: Start (รอ → กำลังนับ 24 ชม.) / หยุด (กำลังนับ → หยุด)
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startedAt', 'endsAt', 'startedBy', 'stoppedAt', 'edit'])
+                    && freshOp(request.resource.data.edit)
+                    && opAfter(request.resource.data.edit).kind == 'admin'
+                    && ((resource.data.status == 'waiting' && request.resource.data.status == 'running'
+                         && nowish(request.resource.data.startedAt)
+                         && request.resource.data.endsAt == request.resource.data.startedAt + 86400000
+                         && request.resource.data.startedBy is string)
+                     || (resource.data.status == 'running' && request.resource.data.status == 'stopped'
+                         && nowish(request.resource.data.stoppedAt)));
+      allow delete: if false;
+    }
+
     match /inventories/{u} {
       allow read: if true;
       allow create: if u.matches('[a-z]+')

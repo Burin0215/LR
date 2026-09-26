@@ -9,11 +9,11 @@
     <!-- ?v= : เปลี่ยนทุกครั้งที่แก้ไฟล์ .js เพื่อให้เบราว์เซอร์โหลดเวอร์ชันใหม่ (ทั้ง index.html และ vault.html) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260926b"></script>
-    <script src="auth.js?v=20260926b"></script>
-    <script src="profile.js?v=20260926b"></script>
-    <script src="inventory.js?v=20260926b"></script>
-    <script src="timeline.js?v=20260926b"></script>
+    <script src="firebase-config.js?v=20260926c"></script>
+    <script src="auth.js?v=20260926c"></script>
+    <script src="profile.js?v=20260926c"></script>
+    <script src="inventory.js?v=20260926c"></script>
+    <script src="timeline.js?v=20260926c"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -265,6 +265,8 @@
                 <!-- User Info & Action Controls -->
                 <div class="flex items-center gap-3 sm:gap-4 shrink-0">
                     <div class="flex items-center gap-2 sm:gap-2.5">
+                        <!-- Request 1:1 ของฉัน: รอเริ่ม / นับถอยหลัง 24 ชม. / ครบแล้ว -->
+                        <button id="oooPill" onclick="openOneOnOneModal()" class="hidden h-8 px-2.5 rounded-full border text-[13px] font-bold shadow-sm items-center gap-1 whitespace-nowrap cursor-pointer transition-all" title="Request 1:1 ของฉัน"></button>
                         <!-- แจ้งเตือน: มีคนแท็กถึงคุณ -->
                         <div class="relative">
                             <button id="mentionBellBtn" onclick="toggleMentionPanel()" class="relative w-8 h-8 rounded-full bg-white/90 hover:bg-white border border-pink-300 flex items-center justify-center text-pink-600 transition-all text-xs shadow-sm cursor-pointer" title="การแจ้งเตือน">
@@ -281,8 +283,8 @@
                         </div>
                         <div class="flex items-center gap-2 bg-white/90 border border-pink-300 rounded-full py-1 px-2.5 shadow-sm">
                             <div id="headerProfileAvatarContainer"></div>
-                            <span id="headerProfileName" class="text-xs font-semibold text-stone-800"></span>
-                            <span id="headerProfileBadge" class="text-[11px] bg-amber-500/90 text-stone-900 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"></span>
+                            <span id="headerProfileName" class="hidden sm:inline text-xs font-semibold text-stone-800"></span>
+                            <span id="headerProfileBadge" class="hidden sm:inline text-[11px] bg-amber-500/90 text-stone-900 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"></span>
                         </div>
                         <button onclick="logoutUser()" class="px-3 py-1 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium transition-all shadow-sm flex items-center gap-1.5 border border-rose-400/50">
                             <i class="fa-solid fa-right-from-bracket text-[12px]"></i>
@@ -679,6 +681,20 @@
     <!-- 6.2 MENTION SUGGESTIONS (พิมพ์ @ แล้วเลือกชื่อ) -->
     <div id="mentionSuggest" class="hidden fixed z-[70] w-56 max-h-60 overflow-y-auto custom-scroll bg-white rounded-2xl border border-pink-200 shadow-xl py-1"></div>
 
+    <!-- 6.25 REQUEST 1:1 ของฉัน (นับถอยหลัง 24 ชม. หลัง Admin กด Start) -->
+    <div id="oooModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300" onclick="closeOneOnOneModal()">
+        <div class="glass-card bg-white/95 rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-pink-300/80 shadow-2xl relative transform scale-95 transition-all duration-300 space-y-4" id="oooModalContainer" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between border-b border-pink-100 pb-3">
+                <h3 class="text-base font-bold text-stone-800">⏳ Request 1:1 ของฉัน</h3>
+                <button onclick="closeOneOnOneModal()" class="w-8 h-8 rounded-full bg-stone-100 hover:bg-pink-100 text-stone-400 hover:text-pink-600 flex items-center justify-center transition-colors cursor-pointer" aria-label="ปิด">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="oooList" class="space-y-2.5 max-h-[60vh] overflow-y-auto custom-scroll"></div>
+            <p class="text-xs text-stone-400">นับถอยหลัง 24 ชม. เริ่มเมื่อ Admin กด Start หลังดำเนินการกับน้องลูเรียบร้อย</p>
+        </div>
+    </div>
+
     <!-- 6.3 CONFIRM MODAL (ใช้แทน confirm() ของเบราว์เซอร์) -->
     <div id="confirmModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[55] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
         <div class="glass-card bg-white/95 rounded-3xl p-6 max-w-xs w-full border border-pink-300/80 shadow-2xl relative transform scale-95 transition-all duration-300 text-center space-y-4" id="confirmModalContainer">
@@ -769,6 +785,7 @@
                 <p class="text-sm font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3">
                     📸 กรุณาแคปหน้าจอนี้ แจ้งที่นามบัตรน้องลู เพื่อดำเนินการต่อ
                 </p>
+                <p class="text-xs text-stone-500">เมื่อ Admin กด Start ระบบจะนับถอยหลัง 24 ชม. — ดูสถานะได้ที่ปุ่ม ⏳ มุมขวาบน</p>
                 <button onclick="closeRequestModal()" class="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold rounded-2xl shadow-md transition-all cursor-pointer">
                     แคปหน้าจอแล้ว ปิด
                 </button>
@@ -1079,6 +1096,7 @@
             renderHeaderProfile();
             subscribeMyRoses();
             subscribeMentions();
+            subscribeOneOnOneMine();
             switchMainTab('timeline');
         }
 
@@ -1116,10 +1134,141 @@
             });
         }
 
+        // ================= Request 1:1 ของฉัน: นับถอยหลัง 24 ชม. =================
+        let MY_OOO = [];
+        let oooUnsub = null;
+        let oooTimer = null;
+        const oooWasRunning = new Set(); // ใช้แจ้งเตือนตอนครบ 24 ชม. ขณะเปิดหน้าเว็บอยู่
+        const OOO_SHOW_MS = 3 * 86400e3; // แสดงรายการที่จบแล้วต่ออีก 3 วัน
+
+        const oooSeen = (id) => { try { return localStorage.getItem(`ooo_seen_${id}`) === '1'; } catch (e) { return true; } };
+        const markOooSeen = (id) => { try { localStorage.setItem(`ooo_seen_${id}`, '1'); } catch (e) {} };
+
+        function visibleOneOnOne(now = Date.now()) {
+            return MY_OOO.filter(r => {
+                const st = oneOnOneState(r, now);
+                if (st === 'waiting' || st === 'running') return true;
+                const doneAt = st === 'ended' ? r.endsAt : (r.stoppedAt || r.createdAt);
+                return now - doneAt < OOO_SHOW_MS;
+            });
+        }
+
+        function subscribeOneOnOneMine() {
+            if (oooUnsub) { oooUnsub(); oooUnsub = null; }
+            MY_OOO = [];
+            oooWasRunning.clear();
+            renderOneOnOne();
+            if (!currentUser || currentUser.role !== 'MEMBER') return;
+            try {
+                oooUnsub = subscribeOneOnOne(list => {
+                    MY_OOO = list;
+                    list.forEach(r => { if (oneOnOneState(r) === 'running') oooWasRunning.add(r.id); });
+                    renderOneOnOne();
+                }, err => {
+                    console.warn(err);
+                    setTimeout(() => { if (currentUser) subscribeOneOnOneMine(); }, 10000);
+                }, currentUser.id);
+            } catch (err) { console.warn(err); }
+            if (!oooTimer) oooTimer = setInterval(tickOneOnOne, 1000);
+        }
+
+        function tickOneOnOne() {
+            if (!MY_OOO.length) return;
+            const now = Date.now();
+            MY_OOO.forEach(r => {
+                if (oooWasRunning.has(r.id) && oneOnOneState(r, now) === 'ended') {
+                    oooWasRunning.delete(r.id);
+                    const target = findUserById(r.to);
+                    showToast(`⏰ Request 1:1 กับ ${target ? target.name : r.to} ครบ 24 ชม. แล้ว`);
+                }
+            });
+            renderOneOnOne();
+        }
+
+        function renderOneOnOne() {
+            const pill = document.getElementById('oooPill');
+            if (!pill) return;
+            const now = Date.now();
+            const list = visibleOneOnOne(now);
+            const running = list.filter(r => oneOnOneState(r, now) === 'running').sort((a, b) => a.endsAt - b.endsAt);
+            const endedUnseen = list.filter(r => oneOnOneState(r, now) === 'ended' && !oooSeen(r.id));
+            const waiting = list.filter(r => oneOnOneState(r, now) === 'waiting');
+            let html = '', cls = '';
+            if (running.length) {
+                html = `<i class="fa-solid fa-hourglass-half"></i> ${formatCountdown(running[0].endsAt - now)}`;
+                cls = 'bg-rose-500 text-white border-rose-400';
+            } else if (endedUnseen.length) {
+                html = '✅ ครบ 24 ชม.';
+                cls = 'bg-emerald-500 text-white border-emerald-400 animate-pulse';
+            } else if (waiting.length) {
+                html = '⏳ รอ Admin เริ่ม';
+                cls = 'bg-white/90 text-rose-600 border-pink-300';
+            }
+            pill.className = `h-8 px-2.5 rounded-full border text-[13px] font-bold shadow-sm items-center gap-1 whitespace-nowrap cursor-pointer transition-all ${html ? 'flex ' + cls : 'hidden'}`;
+            pill.innerHTML = html;
+            const modal = document.getElementById('oooModal');
+            if (modal && !modal.classList.contains('opacity-0')) renderOneOnOneList(list, now);
+        }
+
+        function renderOneOnOneList(list, now) {
+            const box = document.getElementById('oooList');
+            if (!list.length) {
+                box.innerHTML = '<p class="text-xs text-stone-400 text-center py-6">ยังไม่มี Request 1:1</p>';
+                return;
+            }
+            box.innerHTML = list.map(r => {
+                const target = findUserById(r.to) || { name: r.to, avatarType: 'emoji', avatarEmoji: '🌸' };
+                const st = oneOnOneState(r, now);
+                const when = (t) => new Date(t).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const status = st === 'running'
+                    ? `<div class="text-2xl font-extrabold text-rose-600 tabular-nums">${formatCountdown(r.endsAt - now)}</div><div class="text-[12px] text-stone-400">เริ่มเมื่อ ${when(r.startedAt)} · ครบ ${when(r.endsAt)}</div>`
+                    : st === 'ended' ? `<div class="text-sm font-bold text-emerald-600">✅ ครบ 24 ชม. แล้ว</div><div class="text-[12px] text-stone-400">เมื่อ ${when(r.endsAt)}</div>`
+                    : st === 'stopped' ? `<div class="text-sm font-bold text-stone-500">■ Admin หยุดแล้ว</div><div class="text-[12px] text-stone-400">เมื่อ ${when(r.stoppedAt)}</div>`
+                    : `<div class="text-sm font-bold text-amber-600">⏳ รอ Admin กด Start</div><div class="text-[12px] text-stone-400">แคปหน้าจอแจ้งน้องลูแล้วรอสักครู่นะคะ</div>`;
+                return `
+                    <div class="rounded-2xl border ${st === 'running' ? 'border-rose-200 bg-rose-50/60' : st === 'ended' ? 'border-emerald-200 bg-emerald-50/60' : 'border-pink-100 bg-white'} p-3.5 space-y-1.5">
+                        <div class="flex items-center gap-2">
+                            ${renderAvatarHTML(target, "w-8 h-8 shrink-0")}
+                            <div class="min-w-0 flex-1">
+                                <div class="text-sm font-bold text-stone-800">Request 1:1 กับ ${escapeHtml(target.name)}</div>
+                                <div class="text-[12px] text-stone-400">รหัสอ้างอิง <span class="font-mono font-bold text-stone-600">${escapeHtml(refCode(r.id))}</span> · ขอเมื่อ ${when(r.createdAt)}</div>
+                            </div>
+                        </div>
+                        ${status}
+                    </div>`;
+            }).join('');
+        }
+
+        function openOneOnOneModal() {
+            const now = Date.now();
+            const list = visibleOneOnOne(now);
+            list.filter(r => oneOnOneState(r, now) === 'ended').forEach(r => markOooSeen(r.id));
+            const modal = document.getElementById('oooModal');
+            const container = document.getElementById('oooModalContainer');
+            modal.classList.remove('pointer-events-none', 'opacity-0');
+            modal.classList.add('opacity-100');
+            container.classList.remove('scale-95');
+            container.classList.add('scale-100');
+            renderOneOnOneList(list, now);
+            renderOneOnOne();
+        }
+
+        function closeOneOnOneModal() {
+            const modal = document.getElementById('oooModal');
+            const container = document.getElementById('oooModalContainer');
+            modal.classList.add('pointer-events-none', 'opacity-0');
+            modal.classList.remove('opacity-100');
+            container.classList.remove('scale-100');
+            container.classList.add('scale-95');
+        }
+
         function logoutUser() {
             sessionStorage.removeItem(SESSION_KEY);
             if (myRoseUnsub) { myRoseUnsub(); myRoseUnsub = null; }
             if (mentionUnsub) { mentionUnsub(); mentionUnsub = null; }
+            if (oooUnsub) { oooUnsub(); oooUnsub = null; }
+            MY_OOO = [];
+            renderOneOnOne();
             MY_MENTIONS = [];
             renderMentions();
             document.getElementById('mentionPanel').classList.add('hidden');
@@ -2916,6 +3065,11 @@
                         note: 'ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌',
                         adminNote: `[Request 1:1] ${target.name} ได้รับจากคำขอของ ${me.name}`
                     }],
+                    // รายการ Request 1:1 (รอ Admin กด Start แล้วนับถอยหลัง 24 ชม.) — id = รหัสอ้างอิง
+                    extra: (batch, db, opId) => batch.set(db.collection('oneOnOne').doc(opId), {
+                        from: me.id, to: target.id, createdAt: Date.now(), status: 'waiting',
+                        startedAt: 0, endsAt: 0, startedBy: '', stoppedAt: 0, op: opId, edit: ''
+                    }),
                     notifications: [{
                         kind: 'request', visitorId: me.id, visitorName: `${me.name} ➔ ${target.name}`, visitorAvatar: me.avatarEmoji,
                         amount: pay === 'ticket' ? 1 : REQUEST_COST,
@@ -3291,6 +3445,7 @@
                     closeRequestModal();
                     closeGiftModal();
                     if (confirmResolver) resolveConfirm(false);
+                    closeOneOnOneModal();
                 }
             });
         };

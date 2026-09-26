@@ -100,7 +100,8 @@ async function ensureInventories(ids, existing) {
 //   op: { kind, ...ข้อมูลเฉพาะ }  by: key PIN ของผู้ทำรายการ
 //   updates: [{ user, next: { rose, received, coin, ticket } }]
 //   logs / notifications: ข้อมูลที่จะบันทึก (ใส่ timestamp + op ให้อัตโนมัติ)
-async function commitInventoryChange({ op, by, updates = [], logs = [], notifications = [], roulettePrizes = null }) {
+//   extra(batch, db, opId): เขียนเอกสารอื่นเพิ่มในชุดเดียวกัน (เช่น oneOnOne ของ Request 1:1)
+async function commitInventoryChange({ op, by, updates = [], logs = [], notifications = [], roulettePrizes = null, extra = null }) {
   const db = authDb();
   const opRef = db.collection('ops').doc();
   const now = Date.now();
@@ -123,8 +124,53 @@ async function commitInventoryChange({ op, by, updates = [], logs = [], notifica
   if (roulettePrizes) {
     batch.set(db.collection('config').doc('roulette'), { prizes: roulettePrizes, op: opRef.id });
   }
+  if (extra) extra(batch, db, opRef.id);
   await batch.commit();
   return opRef.id;
+}
+
+// ===== Request 1:1: นับถอยหลัง 24 ชม. หลัง Admin กด Start =====
+// oneOnOne/{opId} = { from, to, createdAt, status: waiting|running|stopped, startedAt, endsAt, startedBy, stoppedAt, op, edit }
+const ONE_ON_ONE_MS = 24 * 3600e3;
+
+// สถานะที่แสดง: waiting (รอ Admin เริ่ม) / running (กำลังนับ) / ended (ครบ 24 ชม.) / stopped (Admin หยุด)
+function oneOnOneState(r, now = Date.now()) {
+  if (r.status === 'running') return now >= r.endsAt ? 'ended' : 'running';
+  return r.status;
+}
+
+// fromUser: เฉพาะคำขอของคนนั้น (Member) / ไม่ระบุ: 50 รายการล่าสุดของทุกคน (Admin)
+function subscribeOneOnOne(onChange, onError, fromUser) {
+  const col = authDb().collection('oneOnOne');
+  const query = fromUser ? col.where('from', '==', fromUser) : col.orderBy('createdAt', 'desc').limit(50);
+  return query.onSnapshot(
+    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt - a.createdAt)),
+    (err) => onError && onError(err));
+}
+
+// Admin: Start / หยุด (ใบอนุญาต kind 'admin' ในชุดเดียวกัน)
+function startOneOnOne(requestId, byKey, adminName) {
+  const now = Date.now();
+  return commitInventoryChange({
+    op: { kind: 'admin' }, by: byKey,
+    extra: (batch, db, opId) => batch.update(db.collection('oneOnOne').doc(requestId), {
+      status: 'running', startedAt: now, endsAt: now + ONE_ON_ONE_MS, startedBy: adminName, edit: opId,
+    }),
+  });
+}
+function stopOneOnOne(requestId, byKey) {
+  return commitInventoryChange({
+    op: { kind: 'admin' }, by: byKey,
+    extra: (batch, db, opId) => batch.update(db.collection('oneOnOne').doc(requestId), {
+      status: 'stopped', stoppedAt: Date.now(), edit: opId,
+    }),
+  });
+}
+
+function formatCountdown(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t / 60) % 60)}:${pad(t % 60)}`;
 }
 
 // รหัสอ้างอิงสั้น ๆ จาก id ของใบอนุญาต (ใช้ยืนยันรายการกับ Admin)
