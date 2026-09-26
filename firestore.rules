@@ -274,6 +274,8 @@ service cloud.firestore {
     function validPostBody(d) {
       return d.content is string && d.content.size() <= 1000
         && d.image is string && d.image.size() <= 200000
+        // รูปที่สอง (ไม่บังคับ) — ต้องมีรูปแรกก่อน
+        && (!('image2' in d) || (d.image2 is string && d.image2.size() <= 200000 && (d.image2.size() == 0 || d.image.size() > 0)))
         && d.feeling is string && d.feeling.size() <= 40
         && (d.content.size() > 0 || d.image.size() > 0)
         && validMentions(d);
@@ -295,7 +297,7 @@ service cloud.firestore {
     match /posts/{p} {
       allow read: if true;
       // โพสต์ใหม่: ในนามเจ้าของใบอนุญาต
-      allow create: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'mentions', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
+      allow create: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'image2', 'feeling', 'mentions', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
                     && validPostBody(request.resource.data)
                     && request.resource.data.edited == false
                     && request.resource.data.deleted == false
@@ -304,7 +306,7 @@ service cloud.firestore {
                     && freshFeed(request.resource.data.edit)
                     && feedUser(request.resource.data.edit) == request.resource.data.authorId;
       // แก้ไข / ลบ (deleted: true): เจ้าของโพสต์ หรือ Admin — เจ้าของและเวลาสร้างเปลี่ยนไม่ได้
-      allow update: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'feeling', 'mentions', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
+      allow update: if request.resource.data.keys().hasOnly(['authorId', 'content', 'image', 'image2', 'feeling', 'mentions', 'createdAt', 'updatedAt', 'edited', 'deleted', 'edit'])
                     && resource.data.deleted == false
                     && request.resource.data.authorId == resource.data.authorId
                     && request.resource.data.createdAt == resource.data.createdAt

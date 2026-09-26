@@ -1,6 +1,6 @@
 // Timeline — เก็บใน Firestore (ทุกเครื่องเห็นโพสต์ชุดเดียวกัน)
 //
-// posts/{id}                 = { authorId, content, image, feeling, mentions, createdAt, updatedAt, edited, deleted, edit }
+// posts/{id}                 = { authorId, content, image, image2, feeling, mentions, createdAt, updatedAt, edited, deleted, edit }
 // posts/{id}/likes/{user}    = { on, at, edit }            ถูกใจ / เลิกถูกใจ
 // posts/{id}/comments/{id}   = { authorId, text, mentions, createdAt, deleted, edit }
 // mentions/{id}              = { to, from, postId, commentId, createdAt, read, edit }  แจ้งเตือนการแท็ก
@@ -101,11 +101,17 @@ async function commitFeed(user, byKey, write) {
   await batch.commit();
 }
 
-const cleanPostBody = ({ content, image, feeling }) => ({
-  content: String(content || '').trim().slice(0, POST_MAX_CHARS),
-  image: typeof image === 'string' && image.startsWith('data:image/') ? image : '',
-  feeling: String(feeling || '').slice(0, 40),
-});
+// รูปในโพสต์สูงสุด 2 รูป: image = รูปแรก, image2 = รูปที่สอง (ว่างได้)
+const cleanImage = (v) => (typeof v === 'string' && v.startsWith('data:image/') ? v : '');
+const cleanPostBody = ({ content, image, image2, feeling }) => {
+  const images = [cleanImage(image), cleanImage(image2)].filter(Boolean);
+  return {
+    content: String(content || '').trim().slice(0, POST_MAX_CHARS),
+    image: images[0] || '',
+    image2: images[1] || '',
+    feeling: String(feeling || '').slice(0, 40),
+  };
+};
 
 // ===== แท็กชื่อ (@ชื่อ) =====
 // ชื่อที่แท็กได้ = ACCOUNTS ใน auth.js — คืนรายชื่อ id ที่ถูกแท็กในข้อความ (ไม่ซ้ำ ไม่รวมตัวเอง ไม่เกิน 10)
@@ -151,7 +157,7 @@ function createPost(authorId, byKey, body) {
 // แก้ไข / ลบโพสต์: ใบอนุญาตต้องเป็นของเจ้าของโพสต์ (key ของเจ้าของเอง หรือของ Admin)
 // แก้ข้อความแล้วมีคนถูกแท็กเพิ่ม → แจ้งเตือนเฉพาะคนที่เพิ่มใหม่
 function updatePost(post, byKey, changes) {
-  const body = cleanPostBody({ content: post.content, image: post.image, feeling: post.feeling, ...changes.body });
+  const body = cleanPostBody({ content: post.content, image: post.image, image2: post.image2, feeling: post.feeling, ...changes.body });
   const before = post.mentions || [];
   const mentions = changes.body ? extractMentions(body.content, post.authorId) : before;
   const added = changes.deleted ? [] : mentions.filter((id) => !before.includes(id));

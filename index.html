@@ -9,11 +9,11 @@
     <!-- ?v= : เปลี่ยนทุกครั้งที่แก้ไฟล์ .js เพื่อให้เบราว์เซอร์โหลดเวอร์ชันใหม่ (ทั้ง index.html และ vault.html) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260926c"></script>
-    <script src="auth.js?v=20260926c"></script>
-    <script src="profile.js?v=20260926c"></script>
-    <script src="inventory.js?v=20260926c"></script>
-    <script src="timeline.js?v=20260926c"></script>
+    <script src="firebase-config.js?v=20260927"></script>
+    <script src="auth.js?v=20260927"></script>
+    <script src="profile.js?v=20260927"></script>
+    <script src="inventory.js?v=20260927"></script>
+    <script src="timeline.js?v=20260927"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -322,13 +322,8 @@
                         <textarea id="timelinePostInput" data-mention rows="3" maxlength="1000" placeholder="วันนี้คุณมีความรู้สึกหรือเรื่องราวอะไรอยากแบ่งปันไหม? 💖 (พิมพ์ @ เพื่อแท็กเพื่อน · แปะลิงก์ YouTube ได้)" class="w-full p-3.5 text-xs sm:text-sm bg-pink-50/40 hover:bg-pink-50/70 focus:bg-white border border-pink-200 rounded-2xl focus:border-pink-400 focus:ring-1 focus:ring-pink-300 outline-none text-stone-800 resize-none transition-all placeholder:text-stone-400"></textarea>
                     </div>
 
-                    <!-- Uploaded Image Preview (If attached) -->
-                    <div id="timelineImagePreviewContainer" class="hidden relative rounded-2xl overflow-hidden border border-pink-200 bg-stone-50 max-h-56 flex items-center justify-center p-2">
-                        <img id="timelineImagePreview" src="" alt="Post Preview" class="max-h-52 w-auto object-contain rounded-xl">
-                        <button onclick="removeTimelineImageAttachment()" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-stone-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition-colors shadow-md">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
+                    <!-- Uploaded Image Preview (สูงสุด 2 รูป) -->
+                    <div id="timelineImagePreviewContainer" class="hidden grid grid-cols-2 gap-2"></div>
 
                     <!-- Composer Controls (Feeling, Photo, Submit) -->
                     <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -336,8 +331,8 @@
                             <!-- Add Photo Attachment Button -->
                             <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-xs font-medium border border-pink-200 shadow-2xs flex items-center gap-1.5 transition-all">
                                 <i class="fa-solid fa-image text-rose-500"></i>
-                                <span>รูปภาพ</span>
-                                <input type="file" id="timelineFileInput" accept="image/*" onchange="handleTimelineImageUpload(event)" class="hidden">
+                                <span>รูปภาพ <span class="text-pink-400 font-normal">(สูงสุด 2)</span></span>
+                                <input type="file" id="timelineFileInput" accept="image/*" multiple onchange="handleTimelineImageUpload(event)" class="hidden">
                             </label>
 
                             <!-- Feeling / Vibe Selector -->
@@ -578,20 +573,15 @@
             </div>
 
             <!-- Image Attachment Preview -->
-            <div id="editPostImagePreviewContainer" class="hidden relative rounded-2xl overflow-hidden border border-pink-200 bg-stone-50 max-h-56 flex items-center justify-center p-2">
-                <img id="editPostImagePreview" src="" alt="Edit Post Preview" class="max-h-52 w-auto object-contain rounded-xl">
-                <button onclick="removeEditPostImage()" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-stone-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition-colors shadow-md cursor-pointer" title="ลบรูปภาพ">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
+            <div id="editPostImagePreviewContainer" class="hidden grid grid-cols-2 gap-2"></div>
 
             <!-- Controls (Feeling Selector & Image Replacement) -->
             <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
                 <div class="flex items-center gap-2">
                     <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-xs font-medium border border-pink-200 shadow-2xs flex items-center gap-1.5 transition-all">
                         <i class="fa-solid fa-image text-rose-500"></i>
-                        <span>เปลี่ยนรูปภาพ</span>
-                        <input type="file" id="editPostFileInput" accept="image/*" onchange="handleEditPostImageUpload(event)" class="hidden">
+                        <span>เพิ่มรูปภาพ <span class="text-pink-400 font-normal">(สูงสุด 2)</span></span>
+                        <input type="file" id="editPostFileInput" accept="image/*" multiple onchange="handleEditPostImageUpload(event)" class="hidden">
                     </label>
 
                     <div class="relative">
@@ -914,7 +904,7 @@
         let selectedUserForLogin = null;
         let selectedEditEmoji = '💖';
         let uploadedImageDataUrl = '';
-        let uploadedTimelineImageDataUrl = '';
+        let timelineImages = []; // รูปที่แนบในช่องโพสต์ (สูงสุด 2)
 
         // Portfolio Management State
         let targetPortfolioUserId = null;
@@ -1435,32 +1425,53 @@
             } catch (err) { console.warn(err); }
         }
 
-        // รูปในโพสต์: ย่อเป็น JPEG ก่อนเก็บ (ขนาดเดียวกับรูปโปรไฟล์)
-        async function handleTimelineImageUpload(event) {
-            const file = event.target.files && event.target.files[0];
+        // รูปในโพสต์: สูงสุด 2 รูป ย่อเป็น JPEG ก่อนเก็บ (ขนาดเดียวกับรูปโปรไฟล์)
+        const POST_MAX_IMAGES = 2;
+
+        function renderImagePreviews(containerId, images, removeFn) {
+            const box = document.getElementById(containerId);
+            if (!box) return;
+            box.innerHTML = images.map((src, i) => `
+                <div class="relative rounded-2xl overflow-hidden border border-pink-200 bg-stone-50 h-36 sm:h-44 flex items-center justify-center p-1.5">
+                    <img src="${escapeHtml(src)}" alt="รูปที่ ${i + 1}" class="max-h-full w-auto object-contain rounded-xl">
+                    <button type="button" onclick="${removeFn}(${i})" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-stone-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition-colors shadow-md cursor-pointer" title="ลบรูปภาพ">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>`).join('');
+            box.classList.toggle('hidden', images.length === 0);
+        }
+
+        // เพิ่มรูปจากไฟล์ที่เลือก (เลือกหลายรูปพร้อมกันได้) ไม่เกินจำนวนที่เหลือ
+        async function addImagesFromInput(event, images) {
+            const files = [...(event.target.files || [])];
             event.target.value = '';
-            if (!file) return;
-            try {
-                uploadedTimelineImageDataUrl = await compressImage(file, 1080);
-            } catch (err) {
-                showToast(err && err.message ? err.message : String(err));
-                return;
-            }
-            const preview = document.getElementById('timelineImagePreview');
-            const container = document.getElementById('timelineImagePreviewContainer');
-            if (preview && container) {
-                preview.src = uploadedTimelineImageDataUrl;
-                container.classList.remove('hidden');
+            if (!files.length) return;
+            const room = POST_MAX_IMAGES - images.length;
+            if (room <= 0) { showToast(`แนบรูปได้สูงสุด ${POST_MAX_IMAGES} รูป`); return; }
+            if (files.length > room) showToast(`แนบรูปได้สูงสุด ${POST_MAX_IMAGES} รูป — ใช้ ${room} รูปแรกที่เลือก`);
+            for (const file of files.slice(0, room)) {
+                try {
+                    images.push(await compressImage(file, 1080));
+                } catch (err) {
+                    showToast(err && err.message ? err.message : String(err));
+                }
             }
         }
 
+        async function handleTimelineImageUpload(event) {
+            await addImagesFromInput(event, timelineImages);
+            renderImagePreviews('timelineImagePreviewContainer', timelineImages, 'removeTimelineImage');
+        }
+
+        function removeTimelineImage(i) {
+            timelineImages.splice(i, 1);
+            renderImagePreviews('timelineImagePreviewContainer', timelineImages, 'removeTimelineImage');
+        }
+
         function removeTimelineImageAttachment() {
-            uploadedTimelineImageDataUrl = '';
-            const preview = document.getElementById('timelineImagePreview');
-            const container = document.getElementById('timelineImagePreviewContainer');
+            timelineImages = [];
+            renderImagePreviews('timelineImagePreviewContainer', timelineImages, 'removeTimelineImage');
             const fileInput = document.getElementById('timelineFileInput');
-            if (preview) preview.src = '';
-            if (container) container.classList.add('hidden');
             if (fileInput) fileInput.value = '';
         }
 
@@ -1471,7 +1482,7 @@
             const feelingSelect = document.getElementById('timelineFeelingSelect');
             const content = (input ? input.value : '').trim();
 
-            if (!content && !uploadedTimelineImageDataUrl) {
+            if (!content && !timelineImages.length) {
                 if (input) input.focus();
                 return;
             }
@@ -1484,7 +1495,7 @@
             if (btn) btn.disabled = true;
             try {
                 await createPost(currentUser.id, key, {
-                    content, image: uploadedTimelineImageDataUrl, feeling: feelingSelect ? feelingSelect.value : ''
+                    content, image: timelineImages[0] || '', image2: timelineImages[1] || '', feeling: feelingSelect ? feelingSelect.value : ''
                 });
                 if (input) input.value = '';
                 if (feelingSelect) feelingSelect.value = '';
@@ -1579,7 +1590,7 @@
         }
 
         let editingPostId = null;
-        let editingPostImageDataUrl = '';
+        let editingImages = []; // รูปของโพสต์ที่กำลังแก้ไข (สูงสุด 2)
 
         function openEditPostModal(postId) {
             const post = TIMELINE_POSTS.find(p => p.id === postId);
@@ -1587,26 +1598,19 @@
             if (!currentUser || currentUser.id !== post.authorId) return;
 
             editingPostId = postId;
-            editingPostImageDataUrl = post.image || '';
+            editingImages = [post.image, post.image2].filter(Boolean);
 
             const modal = document.getElementById('editPostModal');
             const container = document.getElementById('editPostModalContainer');
             const textInput = document.getElementById('editPostTextInput');
             const feelingSelect = document.getElementById('editPostFeelingSelect');
-            const previewContainer = document.getElementById('editPostImagePreviewContainer');
-            const previewImg = document.getElementById('editPostImagePreview');
             const fileInput = document.getElementById('editPostFileInput');
 
             if (fileInput) fileInput.value = '';
             if (textInput) textInput.value = post.content || '';
             if (feelingSelect) feelingSelect.value = post.feeling || '';
 
-            if (editingPostImageDataUrl && previewImg && previewContainer) {
-                previewImg.src = editingPostImageDataUrl;
-                previewContainer.classList.remove('hidden');
-            } else if (previewContainer) {
-                previewContainer.classList.add('hidden');
-            }
+            renderImagePreviews('editPostImagePreviewContainer', editingImages, 'removeEditPostImage');
 
             if (modal && container) {
                 modal.classList.remove('pointer-events-none', 'opacity-0');
@@ -1626,35 +1630,17 @@
                 container.classList.add('scale-95');
             }
             editingPostId = null;
-            editingPostImageDataUrl = '';
+            editingImages = [];
         }
 
         async function handleEditPostImageUpload(event) {
-            const file = event.target.files && event.target.files[0];
-            event.target.value = '';
-            if (!file) return;
-            try {
-                editingPostImageDataUrl = await compressImage(file, 1080);
-            } catch (err) {
-                showToast(err && err.message ? err.message : String(err));
-                return;
-            }
-            const preview = document.getElementById('editPostImagePreview');
-            const container = document.getElementById('editPostImagePreviewContainer');
-            if (preview && container) {
-                preview.src = editingPostImageDataUrl;
-                container.classList.remove('hidden');
-            }
+            await addImagesFromInput(event, editingImages);
+            renderImagePreviews('editPostImagePreviewContainer', editingImages, 'removeEditPostImage');
         }
 
-        function removeEditPostImage() {
-            editingPostImageDataUrl = '';
-            const preview = document.getElementById('editPostImagePreview');
-            const container = document.getElementById('editPostImagePreviewContainer');
-            const fileInput = document.getElementById('editPostFileInput');
-            if (preview) preview.src = '';
-            if (container) container.classList.add('hidden');
-            if (fileInput) fileInput.value = '';
+        function removeEditPostImage(i) {
+            editingImages.splice(i, 1);
+            renderImagePreviews('editPostImagePreviewContainer', editingImages, 'removeEditPostImage');
         }
 
         async function saveEditedPost() {
@@ -1666,7 +1652,7 @@
             const feelingSelect = document.getElementById('editPostFeelingSelect');
             const newContent = (textInput ? textInput.value : '').trim();
 
-            if (!newContent && !editingPostImageDataUrl) {
+            if (!newContent && !editingImages.length) {
                 if (textInput) textInput.focus();
                 return;
             }
@@ -1675,7 +1661,8 @@
             if (!key) return;
             try {
                 await updatePost(post, key, { body: {
-                    content: newContent, feeling: feelingSelect ? feelingSelect.value : '', image: editingPostImageDataUrl || ''
+                    content: newContent, feeling: feelingSelect ? feelingSelect.value : '',
+                    image: editingImages[0] || '', image2: editingImages[1] || ''
                 } });
                 closeEditPostModal();
                 triggerCelebration();
@@ -1783,11 +1770,14 @@
             }
         }
 
-        function openPostImage(postId) {
+        const postImages = (post) => [post.image, post.image2].filter(Boolean);
+
+        function openPostImage(postId, index = 0) {
             const post = TIMELINE_POSTS.find(p => p.id === postId);
-            if (!post || !post.image) return;
+            const src = post && postImages(post)[index];
+            if (!src) return;
             const author = findUserById(post.authorId);
-            openDirectLightbox(post.image, author ? author.name : '', post.content || '');
+            openDirectLightbox(src, author ? author.name : '', post.content || '');
         }
 
         // ================= ลิงก์: อนุญาตเฉพาะ YouTube =================
@@ -2197,7 +2187,14 @@
                         ${firstYouTubeId(post.content) ? renderYouTubePreview(firstYouTubeId(post.content)) : ''}
 
                         <!-- Post Image (Full View Uncropped) -->
-                        ${post.image ? `
+                        ${postImages(post).length === 2 ? `
+                            <div class="grid grid-cols-2 gap-2">
+                                ${postImages(post).map((src, i) => `
+                                    <div class="aspect-square bg-stone-50/70 rounded-2xl overflow-hidden border border-pink-100 cursor-pointer group relative" onclick="openPostImage('${post.id}', ${i})" title="คลิกเพื่อดูรูปภาพขนาดเต็ม">
+                                        <img src="${escapeHtml(src)}" alt="รูปที่ ${i + 1}" class="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300">
+                                    </div>`).join('')}
+                            </div>
+                        ` : post.image ? `
                             <div class="w-full bg-stone-50/70 rounded-2xl overflow-hidden border border-pink-100 p-2 flex items-center justify-center cursor-pointer group relative" onclick="openPostImage('${post.id}')" title="คลิกเพื่อดูรูปภาพขนาดเต็ม">
                                 <img src="${escapeHtml(post.image)}" alt="Post Image" class="max-h-[380px] w-auto object-contain rounded-xl shadow-2xs group-hover:scale-[1.01] transition-transform duration-300">
                                 <span class="absolute bottom-4 right-4 bg-stone-900/75 hover:bg-rose-600 text-white text-[12px] font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm shadow-xs transition-colors">
