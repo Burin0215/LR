@@ -173,6 +173,18 @@ function formatCountdown(ms) {
   return `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t / 60) % 60)}:${pad(t % 60)}`;
 }
 
+// ===== สิทธิ์ Request 1:1 จากการมอบดอก: มอบให้คนเดิมครบทุก 5 ดอก = ขอ 1:1 กับคนนั้นได้ 1 ครั้ง =====
+// giftCredits/{from}_{to} = { from, to, given (ดอกที่มอบรวม), used (สิทธิ์ที่ใช้ไป), op }
+const giftCreditId = (from, to) => `${from}_${to}`;
+const creditsLeft = (c) => (c ? Math.floor(c.given / REQUEST_COST) - c.used : 0);
+
+// onChange({ [to]: { given, used } }) — สิทธิ์ทั้งหมดของผู้มอบคนนี้
+function subscribeGiftCredits(fromUser, onChange, onError) {
+  return authDb().collection('giftCredits').where('from', '==', fromUser).onSnapshot(
+    (snap) => { const map = {}; snap.docs.forEach((d) => { const x = d.data(); map[x.to] = { given: x.given || 0, used: x.used || 0 }; }); onChange(map); },
+    (err) => onError && onError(err));
+}
+
 // รหัสอ้างอิงสั้น ๆ จาก id ของใบอนุญาต (ใช้ยืนยันรายการกับ Admin)
 const refCode = (opId) => String(opId || '').slice(0, 8).toUpperCase();
 

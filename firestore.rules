@@ -139,12 +139,13 @@ service cloud.firestore {
             && ((u == p.from && n.rose == o.rose - p.amount && n.received == o.received && n.coin == o.coin && n.ticket == o.ticket)
              || (u == p.to && n.received == o.received + p.amount && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
                  && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
-        // Request 1:1: ผู้ขอใช้ตั๋ว 1:1 1 ใบก่อน (pay: 'ticket') — ไม่มีตั๋วจึงใช้ดอกที่ใช้ได้ 5 ดอก (pay: 'rose')
-        //              ผู้ถูกขอได้ "ดอกที่ได้รับจาก Member" +5 ในชุดเดียวกันเสมอ
+        // Request 1:1: ผู้ขอเลือกจ่ายด้วยตั๋ว 1:1 1 ใบ (pay: 'ticket') หรือดอกที่ใช้ได้ 5 ดอก (pay: 'rose')
+        //              → ผู้ถูกขอได้ "ดอกที่ได้รับจาก Member" +5 ในชุดเดียวกัน
+        //              (pay: 'credit' = ใช้สิทธิ์จากการมอบดอก — ไม่แตะคลังของใคร ดู giftCredits)
         || (p.kind == 'request'
             && ((u == p.from && n.received == o.received && n.coin == o.coin
                  && ((p.get('pay', 'rose') == 'ticket' && o.ticket >= 1 && n.ticket == o.ticket - 1 && n.rose == o.rose)
-                  || (p.get('pay', 'rose') == 'rose' && o.ticket < 1 && n.rose == o.rose - 5 && n.ticket == o.ticket)))
+                  || (p.get('pay', 'rose') == 'rose' && n.rose == o.rose - 5 && n.ticket == o.ticket)))
              || (u == p.to && n.received == o.received + 5 && n.rose == o.rose && n.coin == o.coin && n.ticket == o.ticket
                  && getAfter(/databases/$(database)/documents/inventories/$(p.from)).data.op == n.op)))
         || (p.kind == 'spin' && u == p.user && p.prize is int && o.coin >= 20 && n.received == o.received
@@ -168,7 +169,10 @@ service cloud.firestore {
         // Request 1:1: ผู้ขอและผู้ถูกขอต้องเป็น Member คนละคนกัน
         || (request.resource.data.kind == 'request'
             && request.resource.data.keys().hasOnly(['kind', 'by', 'from', 'to', 'pay'])
-            && request.resource.data.get('pay', 'rose') in ['rose', 'ticket']
+            && request.resource.data.get('pay', 'rose') in ['rose', 'ticket', 'credit']
+            // ใช้สิทธิ์จากการมอบดอก: ต้องตัดสิทธิ์ใน giftCredits ด้วยคำขอนี้ในชุดเดียวกัน
+            && (request.resource.data.get('pay', 'rose') != 'credit'
+                || getAfter(/databases/$(database)/documents/giftCredits/$(request.resource.data.from + '_' + request.resource.data.to)).data.op == o)
             && request.resource.data.to is string
             && request.resource.data.from != request.resource.data.to
             && genOf(request.resource.data.from).role == 'member'
@@ -205,6 +209,38 @@ service cloud.firestore {
                          && request.resource.data.startedBy is string)
                      || (resource.data.status == 'running' && request.resource.data.status == 'stopped'
                          && nowish(request.resource.data.stoppedAt)));
+      allow delete: if false;
+    }
+
+    // สิทธิ์ Request 1:1 จากการมอบดอก: มอบให้คนเดิมครบทุก 5 ดอก = ขอ 1:1 กับคนนั้นได้ 1 ครั้ง
+    // giftCredits/{from}_{to} = { from, to, given (ดอกที่มอบรวม), used (สิทธิ์ที่ใช้ไป), op }
+    function prevCredit(f) {
+      return resource == null ? 0 : resource.data[f];
+    }
+    match /giftCredits/{pair} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['from', 'to', 'given', 'used', 'op'])
+                    && pair == request.resource.data.from + '_' + request.resource.data.to
+                    && (resource == null || (request.resource.data.from == resource.data.from && request.resource.data.to == resource.data.to))
+                    && request.resource.data.given is int
+                    && request.resource.data.used is int
+                    && freshOp(request.resource.data.op)
+                    && opAfter(request.resource.data.op).from == request.resource.data.from
+                    && opAfter(request.resource.data.op).to == request.resource.data.to
+                    && (
+                      // มอบดอก: ยอดมอบเพิ่มตามจำนวนที่มอบจริง
+                      (opAfter(request.resource.data.op).kind == 'gift'
+                        && getAfter(/databases/$(database)/documents/inventories/$(request.resource.data.from)).data.op == request.resource.data.op
+                        && request.resource.data.given == prevCredit('given') + opAfter(request.resource.data.op).amount
+                        && request.resource.data.used == prevCredit('used'))
+                      ||
+                      // ใช้สิทธิ์ขอ 1:1: ใช้ได้เมื่อยังมีสิทธิ์เหลือ (used × 5 ≤ given)
+                      (opAfter(request.resource.data.op).kind == 'request'
+                        && opAfter(request.resource.data.op).get('pay', 'rose') == 'credit'
+                        && request.resource.data.given == prevCredit('given')
+                        && request.resource.data.used == prevCredit('used') + 1
+                        && request.resource.data.used * 5 <= request.resource.data.given)
+                    );
       allow delete: if false;
     }
 

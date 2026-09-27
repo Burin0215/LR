@@ -9,11 +9,11 @@
     <!-- ?v= : เปลี่ยนทุกครั้งที่แก้ไฟล์ .js เพื่อให้เบราว์เซอร์โหลดเวอร์ชันใหม่ (ทั้ง index.html และ vault.html) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260927b"></script>
-    <script src="auth.js?v=20260927b"></script>
-    <script src="profile.js?v=20260927b"></script>
-    <script src="inventory.js?v=20260927b"></script>
-    <script src="timeline.js?v=20260927b"></script>
+    <script src="firebase-config.js?v=20260927c"></script>
+    <script src="auth.js?v=20260927c"></script>
+    <script src="profile.js?v=20260927c"></script>
+    <script src="inventory.js?v=20260927c"></script>
+    <script src="timeline.js?v=20260927c"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -725,6 +725,7 @@
                     <input type="number" id="giftAmountInput" min="1" value="1" inputmode="numeric" oninput="renderGiftForm()"
                         class="w-full px-3 py-2.5 bg-stone-50 border border-pink-200 rounded-xl focus:border-pink-500 focus:ring-1 focus:ring-pink-200 outline-none font-bold text-rose-600 text-sm">
                 </div>
+                <p id="giftCreditText" class="hidden text-xs text-left text-violet-700 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2"></p>
                 <p id="giftErrorText" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2"></p>
                 <div class="flex items-center gap-3 pt-1">
                     <button onclick="closeGiftModal()" class="flex-1 py-2.5 border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-semibold rounded-xl transition-all cursor-pointer">ยกเลิก</button>
@@ -742,6 +743,7 @@
                     <h3 class="text-lg font-bold text-stone-800">มอบดอกกุหลาบ <span id="giftResultAmount"></span> ดอกให้ <span data-gift-target></span> แล้ว 🎁</h3>
                     <p class="text-xs text-stone-500">ผู้รับจะเห็นว่า "ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌"</p>
                 </div>
+                <p id="giftResultCredit" class="hidden text-sm font-semibold text-violet-700 bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3"></p>
                 <button onclick="closeGiftModal()" class="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold rounded-2xl shadow-md transition-all cursor-pointer">ปิด</button>
             </div>
         </div>
@@ -756,8 +758,11 @@
                 <div class="space-y-1">
                     <span class="text-xs font-semibold text-pink-600 tracking-widest uppercase">REQUEST 1:1</span>
                     <h3 class="text-xl font-bold text-stone-800">Request 1:1 กับ <span data-request-target></span></h3>
-                    <p id="requestPayText" class="text-xs text-stone-500"></p>
-                    <p class="text-xs text-stone-500"><span data-request-target></span> จะได้รับ <span data-request-cost></span> ดอกทันที โดยไม่รู้ว่าใครขอ 🤫</p>
+                    <p id="requestReceiveText" class="text-xs text-stone-500"><span data-request-target></span> จะได้รับ <span data-request-cost></span> ดอกทันที โดยไม่รู้ว่าใครขอ 🤫</p>
+                </div>
+                <div class="text-left space-y-1.5">
+                    <p class="text-xs font-semibold text-stone-700">เลือกวิธีใช้</p>
+                    <div id="requestPayOptions" class="space-y-2"></div>
                 </div>
                 <p id="requestErrorText" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2"></p>
                 <div class="flex items-center gap-3 pt-1">
@@ -1111,13 +1116,25 @@
         // จำนวนดอกกุหลาบที่ใช้ได้ของฉัน (แสดงบนปุ่มคลังดอกกุหลาบ)
         let myRoseUnsub = null;
         let myRoseCount = null;
-        let myTicketCount = null; // ตั๋ว 1:1 — Request 1:1 ใช้ตั๋วก่อนดอกกุหลาบ
+        let myTicketCount = null; // ตั๋ว 1:1
+        // สิทธิ์ Request 1:1 จากการมอบดอก: { [ผู้รับ]: { given, used } } (null = ยังโหลดไม่เสร็จ)
+        let myGiftCredits = null;
+        let myCreditUnsub = null;
+        const myCreditsWith = (userId) => creditsLeft(myGiftCredits && myGiftCredits[userId]);
         function subscribeMyRoses() {
             if (myRoseUnsub) myRoseUnsub();
+            if (myCreditUnsub) { myCreditUnsub(); myCreditUnsub = null; }
             myRoseCount = null;
             myTicketCount = null;
+            myGiftCredits = null;
             renderRoseBadges();
             if (!currentUser || currentUser.role === 'ADMIN') return;
+            myCreditUnsub = subscribeGiftCredits(currentUser.id, map => {
+                myGiftCredits = map;
+                if (viewedCommunityUser) renderCommunityMemberDetail(viewedCommunityUser);
+                if (requestTarget && !requestSending) renderRequestConfirm();
+                if (giftTarget && !giftSending) renderGiftForm(true);
+            }, () => { myGiftCredits = {}; });
             myRoseUnsub = authDb().collection('inventories').doc(currentUser.id).onSnapshot(snap => {
                 myRoseCount = snap.exists ? (snap.data().rose || 0) : 0;
                 myTicketCount = snap.exists ? (snap.data().ticket || 0) : 0;
@@ -1265,6 +1282,7 @@
         function logoutUser() {
             sessionStorage.removeItem(SESSION_KEY);
             if (myRoseUnsub) { myRoseUnsub(); myRoseUnsub = null; }
+            if (myCreditUnsub) { myCreditUnsub(); myCreditUnsub = null; }
             if (mentionUnsub) { mentionUnsub(); mentionUnsub = null; }
             if (oooUnsub) { oooUnsub(); oooUnsub = null; }
             MY_OOO = [];
@@ -2592,9 +2610,10 @@
                     <button onclick="openRequestModal('${user.id}')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-heart text-xs"></i>
                         <span>Request 1:1</span>
-                        <span class="px-1.5 py-0.5 rounded-full bg-white/25 text-[12px] font-bold">${myTicketCount > 0 ? '🎫 1' : `🌹 ${REQUEST_COST}`}</span>
+                        <span class="px-1.5 py-0.5 rounded-full bg-white/25 text-[12px] font-bold">${myCreditsWith(user.id) > 0 ? `🎟️ ${myCreditsWith(user.id)}` : myTicketCount > 0 ? '🎫 1' : `🌹 ${REQUEST_COST}`}</span>
                     </button>
                     </div>
+                    ${creditProgressHTML(user)}
                 ` : '';
             }
 
@@ -3076,10 +3095,43 @@
             document.getElementById('giftAmountInput').max = myRoseCount === null ? '' : myRoseCount;
             btn.textContent = giftSending ? 'กำลังมอบ...' : 'ยืนยันการมอบ 🎁';
             btn.disabled = giftSending || myRoseCount === null || !valid || amount > myRoseCount;
+            const creditEl = document.getElementById('giftCreditText');
+            if (giftTarget && myGiftCredits !== null) {
+                const now = creditProgressText(giftTarget);
+                const after = creditProgressText(giftTarget, valid ? amount : 0);
+                const gain = after.left - now.left;
+                creditEl.innerHTML = `🎟️ มอบให้ครบทุก ${REQUEST_COST} ดอก ได้สิทธิ์ Request 1:1 กับ ${escapeHtml(giftTarget.name)} 1 ครั้ง<br>`
+                    + (gain > 0 ? `<b>มอบครั้งนี้ได้สิทธิ์เพิ่ม ${gain} ครั้ง</b>` : `มอบอีก ${now.need} ดอกจะได้สิทธิ์เพิ่ม`)
+                    + ` (ตอนนี้มี ${now.left} ครั้ง)`;
+                creditEl.classList.remove('hidden');
+            } else creditEl.classList.add('hidden');
             if (giftSending) return;
             if (myRoseCount !== null && myRoseCount < 1) setGiftError('ยังไม่มีดอกกุหลาบที่ใช้ได้ — ได้จาก Admin และรางวัลวงล้อ');
             else if (valid && myRoseCount !== null && amount > myRoseCount) setGiftError('ดอกกุหลาบที่มีอยู่ของคุณไม่เพียงพอสำหรับการมอบ');
             else if (!keepError) setGiftError('');
+        }
+
+        // ความคืบหน้าสิทธิ์ Request 1:1 จากการมอบดอกให้ target (ใช้ทั้งโปรไฟล์และหน้าต่างมอบดอก)
+        function creditProgressText(target, extraGiven = 0) {
+            const c = (myGiftCredits && myGiftCredits[target.id]) || { given: 0, used: 0 };
+            const given = c.given + extraGiven;
+            const left = Math.floor(given / REQUEST_COST) - c.used;
+            const need = REQUEST_COST - (given % REQUEST_COST);
+            return { given, left, need };
+        }
+        function creditProgressHTML(target) {
+            if (myGiftCredits === null) return '';
+            const { given, left, need } = creditProgressText(target);
+            const pct = Math.round(((given % REQUEST_COST) / REQUEST_COST) * 100);
+            return `
+                <div class="mt-2.5 px-3 py-2 rounded-xl bg-violet-50 border border-violet-200 text-left">
+                    <div class="flex items-center justify-between gap-2 text-xs">
+                        <span class="font-semibold text-violet-700">🎟️ สิทธิ์ Request 1:1 จากการมอบดอก</span>
+                        <span class="font-bold text-violet-700">${left} ครั้ง</span>
+                    </div>
+                    <div class="mt-1.5 h-1.5 rounded-full bg-violet-100 overflow-hidden"><div class="h-full bg-violet-400 rounded-full" style="width:${pct}%"></div></div>
+                    <p class="mt-1 text-[12px] text-violet-600">มอบให้ ${escapeHtml(target.name)} อีก ${need} ดอก รับสิทธิ์เพิ่ม 1 ครั้ง</p>
+                </div>`;
         }
 
         function openGiftModal(userId) {
@@ -3130,10 +3182,15 @@
             try {
                 // อ่านยอดล่าสุดของทั้งสองคนก่อนบันทึก (Firestore rules ตรวจตัวเลขทุกครั้ง)
                 const db = authDb();
-                const [fromSnap, toSnap] = await Promise.all([
+                const creditRef = db.collection('giftCredits').doc(giftCreditId(sender.id, recipient.id));
+                const [fromSnap, toSnap, creditSnap] = await Promise.all([
                     db.collection('inventories').doc(sender.id).get(),
-                    db.collection('inventories').doc(recipient.id).get()
+                    db.collection('inventories').doc(recipient.id).get(),
+                    creditRef.get()
                 ]);
+                const credit = creditSnap.exists ? creditSnap.data() : { given: 0, used: 0 };
+                const creditBefore = creditsLeft(credit);
+                const creditNext = { from: sender.id, to: recipient.id, given: credit.given + amount, used: credit.used };
                 if (!fromSnap.exists || !toSnap.exists) throw new Error('ยังไม่มีคลังของผู้ใช้นี้ในระบบ กรุณาแจ้ง Admin');
                 const from = { ...emptyInventory(), ...fromSnap.data() };
                 const to = { ...emptyInventory(), ...toSnap.data() };
@@ -3153,10 +3210,17 @@
                     notifications: [{
                         visitorId: recipient.id, visitorName: `${sender.name} ➔ ${recipient.name}`, visitorAvatar: sender.avatarEmoji, amount,
                         note: `ส่งมอบดอกกุหลาบจำนวน ${amount} ดอกให้ ${recipient.name} แบบไม่เปิดเผยตัวตน`
-                    }]
+                    }],
+                    extra: (batch, db, opId) => batch.set(creditRef, { ...creditNext, op: opId })
                 });
 
                 document.getElementById('giftResultAmount').textContent = amount;
+                const gained = creditsLeft(creditNext) - creditBefore;
+                const resultCredit = document.getElementById('giftResultCredit');
+                resultCredit.textContent = gained > 0
+                    ? `🎟️ ได้สิทธิ์ Request 1:1 กับ ${recipient.name} เพิ่ม ${gained} ครั้ง (รวม ${creditsLeft(creditNext)} ครั้ง)`
+                    : `🎟️ มอบให้ ${recipient.name} อีก ${REQUEST_COST - (creditNext.given % REQUEST_COST)} ดอก จะได้สิทธิ์ Request 1:1 1 ครั้ง`;
+                resultCredit.classList.remove('hidden');
                 document.getElementById('giftFormStep').classList.add('hidden');
                 document.getElementById('giftResultStep').classList.remove('hidden');
                 triggerCelebration();
@@ -3181,26 +3245,52 @@
             el.classList.toggle('hidden', !msg);
         }
 
-        // Request 1:1 ใช้ตั๋ว 1:1 ก่อน — ไม่มีตั๋วจึงใช้ดอกกุหลาบที่ใช้ได้ 5 ดอก
-        function requestPayMethod() {
-            if (myTicketCount === null || myRoseCount === null) return null;
-            if (myTicketCount >= 1) return 'ticket';
-            return myRoseCount >= REQUEST_COST ? 'rose' : 'none';
+        // Request 1:1: ผู้ขอเลือกวิธีจ่ายเอง — สิทธิ์จากการมอบดอก / ตั๋ว 1:1 1 ใบ / ดอกที่ใช้ได้ 5 ดอก
+        let requestPay = null;
+
+        function requestPayOptions() {
+            const credits = requestTarget ? myCreditsWith(requestTarget.id) : 0;
+            return [
+                { id: 'credit', ok: credits > 0, icon: '🎟️', label: 'สิทธิ์จากการมอบดอก 1 ครั้ง', sub: `มี ${myGiftCredits === null ? '-' : credits} ครั้ง — ไม่หักตั๋ว/ดอก` },
+                { id: 'ticket', ok: myTicketCount >= 1, icon: '🎫', label: 'ตั๋ว 1:1 1 ใบ', sub: `มี ${myTicketCount === null ? '-' : myTicketCount} ใบ` },
+                { id: 'rose', ok: myRoseCount >= REQUEST_COST, icon: '🌹', label: `ดอกกุหลาบที่ใช้ได้ ${REQUEST_COST} ดอก`, sub: `มี ${myRoseCount === null ? '-' : myRoseCount} ดอก` }
+            ];
+        }
+
+        function selectRequestPay(id) {
+            if (requestSending) return;
+            requestPay = id;
+            setRequestError('');
+            renderRequestConfirm();
         }
 
         function renderRequestConfirm() {
             const btn = document.getElementById('requestSubmitBtn');
-            const pay = requestPayMethod();
-            const payText = document.getElementById('requestPayText');
-            if (pay === 'ticket') {
-                payText.innerHTML = `ใช้ <b class="text-rose-600">ตั๋ว 1:1 1 ใบ</b> (คุณมี ${myTicketCount} ใบ) — ไม่หักดอกกุหลาบ`;
-            } else {
-                payText.innerHTML = `ใช้ดอกกุหลาบที่ใช้ได้ <b class="text-rose-600">${REQUEST_COST} ดอก</b> (คุณมี ${myRoseCount === null ? '-' : myRoseCount} ดอก)`;
+            const loading = myTicketCount === null || myRoseCount === null || myGiftCredits === null;
+            const options = requestPayOptions();
+            const current = options.find(o => o.id === requestPay);
+            if (!current || !current.ok) {
+                const first = options.find(o => o.ok);
+                requestPay = first ? first.id : null;
             }
-            btn.textContent = requestSending ? 'กำลังส่งคำขอ...' : pay === 'ticket' ? 'ยืนยันใช้ตั๋ว 1 ใบ' : `ยืนยันใช้ ${REQUEST_COST} ดอก`;
-            btn.disabled = requestSending || pay === null || pay === 'none';
-            if (pay === 'none' && !requestSending) {
-                setRequestError(`ไม่มีตั๋ว 1:1 และดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
+            document.getElementById('requestPayOptions').innerHTML = options.map(o => `
+                <button type="button" ${o.ok ? `onclick="selectRequestPay('${o.id}')"` : 'disabled'}
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${!o.ok ? 'border-stone-200 bg-stone-50 opacity-50 cursor-not-allowed' : requestPay === o.id ? 'border-rose-400 bg-rose-50 ring-1 ring-rose-300 cursor-pointer' : 'border-pink-200 bg-white hover:bg-pink-50 cursor-pointer'}">
+                    <span class="w-4 h-4 rounded-full border-2 shrink-0 ${requestPay === o.id ? 'border-rose-500 bg-rose-500 shadow-[inset_0_0_0_2px_white]' : 'border-stone-300'}"></span>
+                    <span class="text-lg">${o.icon}</span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-xs font-bold text-stone-800">${o.label}</span>
+                        <span class="block text-[12px] text-stone-500">${o.sub}</span>
+                    </span>
+                </button>`).join('');
+            // ใช้สิทธิ์จากการมอบดอก: ผู้ถูกขอไม่ได้รับดอกเพิ่ม
+            document.getElementById('requestReceiveText').classList.toggle('hidden', requestPay === 'credit');
+            btn.textContent = requestSending ? 'กำลังส่งคำขอ...'
+                : requestPay === 'credit' ? 'ยืนยันใช้สิทธิ์ 1 ครั้ง'
+                : requestPay === 'ticket' ? 'ยืนยันใช้ตั๋ว 1 ใบ' : `ยืนยันใช้ ${REQUEST_COST} ดอก`;
+            btn.disabled = requestSending || loading || !requestPay;
+            if (!loading && !requestPay && !requestSending) {
+                setRequestError(`ยังไม่มีสิทธิ์จากการมอบดอก ตั๋ว 1:1 หรือดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
             }
         }
 
@@ -3209,6 +3299,7 @@
             if (!currentUser || currentUser.role !== 'MEMBER' || !target || target.role !== 'MEMBER' || target.id === currentUser.id) return;
             requestTarget = target;
             requestSending = false;
+            requestPay = null;
             document.querySelectorAll('[data-request-target]').forEach(el => { el.textContent = target.name; });
             document.querySelectorAll('[data-request-cost]').forEach(el => { el.textContent = REQUEST_COST; });
             document.getElementById('requestConfirmStep').classList.remove('hidden');
@@ -3252,46 +3343,60 @@
             try {
                 // อ่านยอดล่าสุดของทั้งสองคนก่อนบันทึก (Firestore rules ตรวจตัวเลขทุกครั้ง)
                 const db = authDb();
-                const [mySnap, targetSnap] = await Promise.all([
+                const creditRef = db.collection('giftCredits').doc(giftCreditId(me.id, target.id));
+                const [mySnap, targetSnap, creditSnap] = await Promise.all([
                     db.collection('inventories').doc(me.id).get(),
-                    db.collection('inventories').doc(target.id).get()
+                    db.collection('inventories').doc(target.id).get(),
+                    creditRef.get()
                 ]);
                 if (!mySnap.exists || !targetSnap.exists) throw new Error('ยังไม่มีคลังของผู้ใช้นี้ในระบบ กรุณาแจ้ง Admin');
                 const prev = { ...emptyInventory(), ...mySnap.data() };
                 const next = { ...emptyInventory(), ...targetSnap.data() };
-                // ใช้ตั๋วก่อน (ตัดสินจากยอดล่าสุดใน Firestore — Rules บังคับเงื่อนไขเดียวกัน)
-                const pay = prev.ticket >= 1 ? 'ticket' : 'rose';
-                if (pay === 'rose' && prev.rose < REQUEST_COST) throw new Error(`ไม่มีตั๋ว 1:1 และดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
-                const mine = pay === 'ticket' ? { ...prev, ticket: prev.ticket - 1 } : { ...prev, rose: prev.rose - REQUEST_COST };
+                const credit = creditSnap.exists ? creditSnap.data() : { given: 0, used: 0 };
+                // ตรวจจากยอดล่าสุดใน Firestore (Rules บังคับเงื่อนไขเดียวกัน)
+                const pay = requestPay;
+                if (pay === 'credit' && creditsLeft(credit) < 1) throw new Error(`ยังไม่มีสิทธิ์จากการมอบดอกให้ ${target.name}`);
+                if (pay === 'ticket' && prev.ticket < 1) throw new Error('ไม่มีตั๋ว 1:1');
+                if (pay === 'rose' && prev.rose < REQUEST_COST) throw new Error(`ดอกกุหลาบไม่พอ — ต้องมีอย่างน้อย ${REQUEST_COST} ดอก`);
+                if (!['credit', 'ticket', 'rose'].includes(pay)) throw new Error('กรุณาเลือกวิธีใช้');
+                const payName = pay === 'credit' ? 'สิทธิ์จากการมอบดอก 1 ครั้ง' : pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ' : `ดอกกุหลาบ ${REQUEST_COST} ดอก`;
+                const myLog = {
+                    userId: me.id, changeType: 'remove',
+                    itemId: pay === 'credit' ? 'request_credit' : pay === 'ticket' ? 'ticket_1to1' : 'rose',
+                    amount: pay === 'rose' ? REQUEST_COST : 1,
+                    note: `ขอ Request 1:1 กับ ${target.name} 💞${pay === 'credit' ? ' (ใช้สิทธิ์จากการมอบดอก)' : pay === 'ticket' ? ' (ใช้ตั๋ว 1:1)' : ''}`,
+                    adminNote: `[Request 1:1] ${me.name} ขอ 1:1 กับ ${target.name} — จ่ายด้วย${payName}`
+                };
+                // ใช้สิทธิ์จากการมอบดอก: ไม่แตะคลังของใคร / จ่ายตั๋วหรือดอก: ผู้ถูกขอได้ 5 ดอก
+                const updates = pay === 'credit' ? [] : [
+                    { user: me.id, next: pay === 'ticket' ? { ...prev, ticket: prev.ticket - 1 } : { ...prev, rose: prev.rose - REQUEST_COST } },
+                    { user: target.id, next: { ...next, received: next.received + REQUEST_COST } }
+                ];
+                const logs = pay === 'credit' ? [myLog] : [myLog, {
+                    // คำขอเป็นความลับของผู้ถูกขอ — รู้เฉพาะผู้ขอและ Admin
+                    userId: target.id, itemId: 'rose_received', changeType: 'add', amount: REQUEST_COST,
+                    note: 'ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌',
+                    adminNote: `[Request 1:1] ${target.name} ได้รับจากคำขอของ ${me.name}`
+                }];
                 const opId = await commitInventoryChange({
                     op: { kind: 'request', from: me.id, to: target.id, pay }, by: session.key,
-                    updates: [
-                        { user: me.id, next: mine },
-                        { user: target.id, next: { ...next, received: next.received + REQUEST_COST } }
-                    ],
-                    logs: [{
-                        userId: me.id, itemId: pay === 'ticket' ? 'ticket_1to1' : 'rose', changeType: 'remove', amount: pay === 'ticket' ? 1 : REQUEST_COST,
-                        note: `ขอ Request 1:1 กับ ${target.name} 💞${pay === 'ticket' ? ' (ใช้ตั๋ว 1:1)' : ''}`,
-                        adminNote: `[Request 1:1] ${me.name} ขอ 1:1 กับ ${target.name} — จ่ายด้วย${pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ' : `ดอกกุหลาบ ${REQUEST_COST} ดอก`}`
-                    }, {
-                        // คำขอเป็นความลับของผู้ถูกขอ — รู้เฉพาะผู้ขอและ Admin
-                        userId: target.id, itemId: 'rose_received', changeType: 'add', amount: REQUEST_COST,
-                        note: 'ได้รับดอกกุหลาบจากผู้ไม่เปิดเผยตัวตน 💌',
-                        adminNote: `[Request 1:1] ${target.name} ได้รับจากคำขอของ ${me.name}`
-                    }],
+                    updates, logs,
                     // รายการ Request 1:1 (รอ Admin กด Start แล้วนับถอยหลัง 24 ชม.) — id = รหัสอ้างอิง
-                    extra: (batch, db, opId) => batch.set(db.collection('oneOnOne').doc(opId), {
-                        from: me.id, to: target.id, createdAt: Date.now(), status: 'waiting',
-                        startedAt: 0, endsAt: 0, startedBy: '', stoppedAt: 0, op: opId, edit: ''
-                    }),
+                    extra: (batch, db, opId) => {
+                        batch.set(db.collection('oneOnOne').doc(opId), {
+                            from: me.id, to: target.id, createdAt: Date.now(), status: 'waiting',
+                            startedAt: 0, endsAt: 0, startedBy: '', stoppedAt: 0, op: opId, edit: ''
+                        });
+                        if (pay === 'credit') batch.set(creditRef, { from: me.id, to: target.id, given: credit.given, used: credit.used + 1, op: opId });
+                    },
                     notifications: [{
                         kind: 'request', visitorId: me.id, visitorName: `${me.name} ➔ ${target.name}`, visitorAvatar: me.avatarEmoji,
-                        amount: pay === 'ticket' ? 1 : REQUEST_COST,
-                        note: `${me.name} ขอ Request 1:1 กับ ${target.name} (ใช้${pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ' : `ดอกกุหลาบ ${REQUEST_COST} ดอก`})`
+                        amount: pay === 'rose' ? REQUEST_COST : 1,
+                        note: `${me.name} ขอ Request 1:1 กับ ${target.name} (ใช้${payName})`
                     }]
                 });
 
-                document.getElementById('requestResultPaid').textContent = pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ 🎫' : `ดอกกุหลาบ ${REQUEST_COST} ดอก 🌹`;
+                document.getElementById('requestResultPaid').textContent = pay === 'credit' ? 'สิทธิ์จากการมอบดอก 🎟️' : pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ 🎫' : `ดอกกุหลาบ ${REQUEST_COST} ดอก 🌹`;
                 document.getElementById('requestResultFrom').textContent = me.name;
                 document.getElementById('requestResultTo').textContent = target.name;
                 document.getElementById('requestResultAt').textContent = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
