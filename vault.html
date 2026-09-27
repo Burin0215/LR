@@ -1556,7 +1556,12 @@
                 const confirmWeeklyOverLimit = () => {
                     const w = weeklyWarn.value;
                     weeklyWarn.value = null;
-                    if (w) w.run();
+                    if (!w) return;
+                    notifyDiscord('quota', {
+                        by: currentIdentity.value ? currentIdentity.value.name : 'Admin',
+                        name: w.name, current: w.current, amount: w.amount, limit: WEEKLY_ROSE_LIMIT
+                    });
+                    w.run();
                 };
 
                 // Add / Delete ใช้ช่องจำนวนเดียวกัน: Add = บวกเพิ่ม, Delete = ลบออก (ไม่ต่ำกว่า 0)
@@ -1677,6 +1682,10 @@
                                     : 'ปรับยอดของในคลัง',
                                 adminNote: `[Admin: ${adminName}]${reasonTag ? ' ' + reasonTag : ''} ปรับยอด${isReceived ? 'กุหลาบที่ได้รับ' : ''}ของ ${visitor.name}`
                             }]
+                        });
+                        notifyDiscord('admin_inv', {
+                            by: adminName, name: visitor.name, item: item.name, unit: item.unit, delta: diff, total: next[field],
+                            reason: reason === 'weekly' ? 'แจกประจำสัปดาห์' : reason === 'other' ? 'รางวัลอื่นๆ' : ''
                         });
                         triggerToast(`อัปเดต ${item.name} ของ ${visitor.name} เป็น ${next[field]} ${item.unit}`);
                         return true;
@@ -1814,6 +1823,7 @@
                     if (!updates.length) { triggerToast('คลังของทุกคนเป็น 0 อยู่แล้ว'); return; }
                     try {
                         await commitInventoryChange({ op: { kind: 'admin' }, by: key, updates, logs });
+                        notifyDiscord('admin_reset', { by: adminName });
                         triggerToast('Reset คลังของ Member ทุกคนเรียบร้อยแล้ว');
                     } catch (err) {
                         triggerToast(inventoryErrorText(err));
@@ -1854,6 +1864,7 @@
                                     { userId: me.id, itemId, changeType: 'add', amount: prize.amount, note: `รางวัลจาก Love Roulette 🎡 (${prize.label})` }
                                 ]
                             });
+                            notifyDiscord('spin', { name: me.name, prize: prize.label });
                         } catch (err) {
                             isSpinning.value = false;
                             triggerToast(inventoryErrorText(err));

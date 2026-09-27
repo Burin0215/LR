@@ -3,7 +3,9 @@
 // ตั้งค่า (ครั้งเดียว):
 //   1. script.google.com → New project → วางโค้ดนี้ทั้งไฟล์
 //   2. Project Settings → Script Properties → Add property
-//        DISCORD_WEBHOOK = ลิงก์ Webhook ของห้อง Discord (Server Settings → Integrations → Webhooks)
+//        DISCORD_WEBHOOK       = ลิงก์ Webhook ห้องหลัก (โพสต์ใหม่ / 1:1 เริ่ม-หยุด-ครบ 24 ชม.)
+//        DISCORD_WEBHOOK_ADMIN = ลิงก์ Webhook ห้อง Log แอดมิน (มอบดอก / Request / แก้คลัง / วงล้อ / โควตา)
+//        (Channel → Edit Channel → Integrations → Webhooks — ไม่ตั้งห้องแอดมิน = ส่งเข้าห้องหลัก)
 //   3. เลือกฟังก์ชัน setup แล้วกด Run (อนุญาตสิทธิ์) — สร้างตัวเช็ค "ครบ 24 ชม." ทุก 5 นาที
 //   4. Deploy → New deployment → Web app → Execute as: Me / Who has access: Anyone → Deploy
 //   5. คัดลอก Web app URL (…/exec) ไปใส่ DISCORD_RELAY_URL ใน notify.js
@@ -12,7 +14,12 @@
 
 const SITE_URL = 'https://burin0215.github.io/LR/';
 const MAX_PER_MINUTE = 20; // กันสแปม
-const COLORS = { request: 0xec4899, ooo_start: 0xf59e0b, ooo_stop: 0x78716c, ooo_end: 0x10b981, gift: 0xe11d48, post: 0x8b5cf6 };
+const COLORS = {
+  request: 0xec4899, ooo_start: 0xf59e0b, ooo_stop: 0x78716c, ooo_end: 0x10b981, gift: 0xe11d48, post: 0x8b5cf6,
+  admin_inv: 0x0ea5e9, admin_reset: 0xdc2626, spin: 0xa855f7, quota: 0xf97316,
+};
+// เหตุการณ์ที่ไปห้อง Log แอดมิน (ที่เหลือไปห้องหลัก)
+const ADMIN_TYPES = ['gift', 'request', 'admin_inv', 'admin_reset', 'spin', 'quota'];
 
 function doPost(e) {
   try {
@@ -71,13 +78,35 @@ function buildEmbed(d) {
         description: `**${clean(d.author)}**${d.feeling ? ' — ' + clean(d.feeling, 40) : ''}\n${text || '_(รูปภาพ)_'}${images ? `\n🖼️ ${images} รูป` : ''}\n\n[เปิดดูไทม์ไลน์](${SITE_URL})`,
       };
     }
+    case 'admin_inv': {
+      const delta = parseInt(d.delta, 10) || 0;
+      const total = parseInt(d.total, 10) || 0;
+      if (!delta) return null;
+      return {
+        title: delta > 0 ? '🛠️ แอดมินเพิ่มของในคลัง' : '🛠️ แอดมินลดของในคลัง',
+        description: `**${clean(d.name)}** — ${clean(d.item, 40)} ${delta > 0 ? '+' : ''}${delta} ${clean(d.unit, 10)} (คงเหลือ ${total})`
+          + `${d.reason ? `\nเหตุผล: ${clean(d.reason, 40)}` : ''}\nโดย: ${clean(d.by)}`,
+      };
+    }
+    case 'admin_reset':
+      return { title: '⚠️ Reset คลังของ Member ทุกคน', description: `โดย: ${clean(d.by)}` };
+    case 'spin':
+      return { title: '🎡 หมุน Love Roulette', description: `**${clean(d.name)}** ได้รับ **${clean(d.prize, 40)}**` };
+    case 'quota': {
+      const current = parseInt(d.current, 10) || 0, amount = parseInt(d.amount, 10) || 0, limit = parseInt(d.limit, 10) || 10;
+      return {
+        title: '🚨 แจกดอกประจำสัปดาห์เกินโควตา',
+        description: `**${clean(d.name)}** ได้ไปแล้ว ${current}/${limit} ดอก — เพิ่มอีก ${amount} ดอก เป็น **${current + amount}/${limit}**\nยืนยันโดย: ${clean(d.by)}`,
+      };
+    }
     default:
       return null;
   }
 }
 
 function sendDiscord(embed, type) {
-  const url = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK');
+  const props = PropertiesService.getScriptProperties();
+  const url = (ADMIN_TYPES.includes(type) && props.getProperty('DISCORD_WEBHOOK_ADMIN')) || props.getProperty('DISCORD_WEBHOOK');
   if (!url) throw new Error('DISCORD_WEBHOOK not set');
   UrlFetchApp.fetch(url, {
     method: 'post',
@@ -141,6 +170,9 @@ function setup() {
 // ทดสอบส่งข้อความ (กด Run ใน Apps Script)
 function testSend() {
   sendDiscord({ title: '🔔 ทดสอบ', description: 'Love Roulette เชื่อม Discord สำเร็จ 💖' });
+}
+function testSendAdmin() {
+  sendDiscord({ title: '🔔 ทดสอบห้อง Log แอดมิน', description: 'Love Roulette เชื่อมห้อง Log แอดมินสำเร็จ 🛡️' }, 'admin_inv');
 }
 
 function reply(text) {

@@ -3,7 +3,7 @@
 // ว่าง = ปิดการแจ้งเตือน
 const DISCORD_RELAY_URL = 'https://script.google.com/macros/s/AKfycbz7MrdAVAqiwG_tSaF4vYJVBciH_f7-EXVgXcEO9ZbClGzxmkKk7GPATAyTVsbDtmB1/exec';
 
-// type: request | ooo_start | ooo_stop | gift | post — ส่งแล้วไม่รอผล (แจ้งไม่สำเร็จไม่กระทบการใช้งาน)
+// type: ห้องหลัก post | ooo_start | ooo_stop / ห้อง Log แอดมิน request | gift | admin_inv | admin_reset | spin | quota — ส่งแล้วไม่รอผล (แจ้งไม่สำเร็จไม่กระทบการใช้งาน)
 function notifyDiscord(type, data) {
   if (!DISCORD_RELAY_URL) return;
   try {
