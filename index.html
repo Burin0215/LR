@@ -14,6 +14,7 @@
     <script src="profile.js?v=20260927c"></script>
     <script src="inventory.js?v=20260927c"></script>
     <script src="timeline.js?v=20260927c"></script>
+    <script src="notify.js?v=20260927c"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1512,9 +1513,11 @@
             timelinePublishing = true;
             if (btn) btn.disabled = true;
             try {
+                const feeling = feelingSelect ? feelingSelect.value : '';
                 await createPost(currentUser.id, key, {
-                    content, image: timelineImages[0] || '', image2: timelineImages[1] || '', feeling: feelingSelect ? feelingSelect.value : ''
+                    content, image: timelineImages[0] || '', image2: timelineImages[1] || '', feeling
                 });
+                notifyDiscord('post', { author: currentUser.name, feeling, text: content, images: timelineImages.length });
                 if (input) input.value = '';
                 if (feelingSelect) feelingSelect.value = '';
                 removeTimelineImageAttachment();
@@ -3214,6 +3217,7 @@
                     extra: (batch, db, opId) => batch.set(creditRef, { ...creditNext, op: opId })
                 });
 
+                notifyDiscord('gift', { from: sender.name, to: recipient.name, amount });
                 document.getElementById('giftResultAmount').textContent = amount;
                 const gained = creditsLeft(creditNext) - creditBefore;
                 const resultCredit = document.getElementById('giftResultCredit');
@@ -3396,6 +3400,7 @@
                     }]
                 });
 
+                notifyDiscord('request', { from: me.name, to: target.name, pay: payName, code: refCode(opId) });
                 document.getElementById('requestResultPaid').textContent = pay === 'credit' ? 'สิทธิ์จากการมอบดอก 🎟️' : pay === 'ticket' ? 'ตั๋ว 1:1 1 ใบ 🎫' : `ดอกกุหลาบ ${REQUEST_COST} ดอก 🌹`;
                 document.getElementById('requestResultFrom').textContent = me.name;
                 document.getElementById('requestResultTo').textContent = target.name;

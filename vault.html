@@ -10,6 +10,7 @@
     <script src="firebase-config.js?v=20260927c"></script>
     <script src="auth.js?v=20260927c"></script>
     <script src="inventory.js?v=20260927c"></script>
+    <script src="notify.js?v=20260927c"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -1491,11 +1492,14 @@
                     oooBusy.value = true;
                     try {
                         if (c.action === 'start') {
-                            await startOneOnOne(c.req.id, key, currentIdentity.value ? currentIdentity.value.name : 'Admin');
+                            const by = currentIdentity.value ? currentIdentity.value.name : 'Admin';
+                            await startOneOnOne(c.req.id, key, by);
+                            notifyDiscord('ooo_start', { from: getIdentityName(c.req.from), to: getIdentityName(c.req.to), by, code: refCode(c.req.id), endsAt: Date.now() + ONE_ON_ONE_MS });
                             oooWasRunning.add(c.req.id);
                             triggerToast(`เริ่มนับถอยหลัง 24 ชม. แล้ว ⏳ (${getIdentityName(c.req.from)} ➔ ${getIdentityName(c.req.to)})`);
                         } else {
                             await stopOneOnOne(c.req.id, key);
+                            notifyDiscord('ooo_stop', { from: getIdentityName(c.req.from), to: getIdentityName(c.req.to), code: refCode(c.req.id) });
                             oooWasRunning.delete(c.req.id);
                             triggerToast('หยุดการนับถอยหลังแล้ว');
                         }
