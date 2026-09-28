@@ -50,10 +50,15 @@ function normalizePrizes(prizes) {
   });
 }
 
-function subscribeInventories(onChange, onError) {
+// userId: เฉพาะคลังของคนนั้น (Member) / ไม่ระบุ: คลังของทุกคน (Admin) — onChange({ [id]: inventory })
+function subscribeInventories(onChange, onError, userId) {
+  const fail = (err) => onError && onError(err);
+  if (userId) {
+    return authDb().collection('inventories').doc(userId).onSnapshot(
+      (d) => onChange(d.exists ? { [d.id]: { ...emptyInventory(), ...d.data() } } : {}), fail);
+  }
   return authDb().collection('inventories').onSnapshot(
-    (snap) => { const map = {}; snap.docs.forEach((d) => { map[d.id] = { ...emptyInventory(), ...d.data() }; }); onChange(map); },
-    (err) => onError && onError(err));
+    (snap) => { const map = {}; snap.docs.forEach((d) => { map[d.id] = { ...emptyInventory(), ...d.data() }; }); onChange(map); }, fail);
 }
 
 // userId: ประวัติของคนนั้นเท่านั้น / ไม่ระบุ: ล่าสุดของทุกคน `limit` รายการ (Admin)

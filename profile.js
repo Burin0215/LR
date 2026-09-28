@@ -1,6 +1,8 @@
 // โปรไฟล์สมาชิก — เก็บใน Firestore
 // profiles/{user}     = { photos[], bio, tags[], prompts[{q,a}], mbti, zodiac, theme, updatedAt, edit }
 // profileEdits/{id}   = { user, by }  ใบอนุญาตแก้โปรไฟล์ (อ่านไม่ได้) by = key PIN ของเจ้าของหรือ Admin
+// profileCards/{user} = ทุกอย่างของโปรไฟล์ ยกเว้นรูปเต็ม + thumb (รูปแรกย่อเล็ก) + photoCount
+//   หน้าเว็บโหลดการ์ดของทุกคน (เล็ก) ส่วนรูปเต็มโหลดเฉพาะตอนเปิดดูโปรไฟล์ (ประหยัด Firebase)
 // รูปถูกย่อเป็น JPEG แล้วเก็บเป็น data URL ในเอกสารเดียวกัน (ไม่ต้องใช้ Firebase Storage)
 
 const PROFILE_MAX_PHOTOS = 3;
@@ -8,6 +10,7 @@ const PROFILE_MAX_TAGS = 8;
 const PROFILE_MAX_PROMPTS = 3;
 const PROFILE_BIO_MAX = 150;
 const PROFILE_ANSWER_MAX = 60;
+const PROFILE_THUMB_SIDE = 160; // รูปย่อสำหรับรายชื่อ/ไทม์ไลน์ (px)
 const PROFILE_PHOTO_MAX_BYTES = 120000; // ต่อรูป (ความยาว data URL) — 3 รูปรวมไม่เกินขีดจำกัด 1MB ของ Firestore
 
 const PROFILE_TAG_GROUPS = [
@@ -65,25 +68,98 @@ function normalizeProfile(p) {
   };
 }
 
-function subscribeProfiles(onChange, onError) {
-  return authDb().collection('profiles').onSnapshot(
+// การ์ดโปรไฟล์ของทุกคน: จำไว้ในเครื่อง แล้วฟังเฉพาะการ์ดที่แก้ไขหลังจากนั้น
+// (เปิดเว็บครั้งถัดไปอ่านแค่การ์ดที่เปลี่ยน แทนการอ่านทุกคนใหม่ทุกครั้ง)
+// onChange(map, fromServer) — fromServer = ได้ผลจาก Firestore แล้ว (ไม่ใช่แค่ของที่จำไว้)
+const PROFILE_CARDS_CACHE = 'lr_profile_cards_v1';
+const PROFILE_CARDS_OVERLAP = 24 * 3600e3; // เผื่อนาฬิกาเครื่องผู้แก้คลาดเคลื่อน
+
+function subscribeProfileCards(onChange, onError) {
+  let cache = { cards: {}, since: 0 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(PROFILE_CARDS_CACHE) || 'null');
+    if (saved && saved.cards && typeof saved.since === 'number') cache = saved;
+  } catch (e) { /* ignore */ }
+  const map = {};
+  Object.entries(cache.cards).forEach(([id, c]) => { map[id] = { ...emptyProfile(), ...c }; });
+  if (Object.keys(map).length) onChange({ ...map }, false);
+
+  return authDb().collection('profileCards').where('updatedAt', '>', Math.max(0, cache.since - PROFILE_CARDS_OVERLAP)).onSnapshot(
     (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => { map[d.id] = { ...emptyProfile(), ...d.data() }; });
-      onChange(map);
+      snap.docChanges().forEach((ch) => {
+        if (ch.type === 'removed') return; // ออกจากเงื่อนไขเวลาเท่านั้น — การ์ดยังอยู่
+        const data = ch.doc.data();
+        cache.cards[ch.doc.id] = data;
+        cache.since = Math.max(cache.since, data.updatedAt || 0);
+        map[ch.doc.id] = { ...emptyProfile(), ...data };
+      });
+      try { localStorage.setItem(PROFILE_CARDS_CACHE, JSON.stringify(cache)); } catch (e) { /* เต็ม/ปิดไว้ — ไม่เป็นไร */ }
+      onChange({ ...map }, !snap.metadata.fromCache);
     },
     (err) => onError && onError(err)
   );
 }
 
-// บันทึกโปรไฟล์ของ targetId โดยใช้ key PIN ของผู้แก้ (เจ้าของเอง หรือ Admin)
+// โปรไฟล์เต็ม (รูปทุกรูป) — โหลดครั้งเดียวต่อการเปิดเว็บ เฉพาะตอนเปิดดู/แก้ไข
+const fullProfileCache = {};
+function loadFullProfile(userId, force) {
+  if (!force && fullProfileCache[userId]) return fullProfileCache[userId];
+  fullProfileCache[userId] = authDb().collection('profiles').doc(userId).get()
+    .then((snap) => (snap.exists ? { ...emptyProfile(), ...snap.data() } : null))
+    .catch((err) => { delete fullProfileCache[userId]; throw err; });
+  return fullProfileCache[userId];
+}
+
+// การ์ด = โปรไฟล์ที่ normalize แล้ว ยกเว้นรูปเต็ม
+async function profileCardOf(profile) {
+  const { photos, ...rest } = normalizeProfile(profile);
+  return { ...rest, thumb: photos.length ? await makeThumb(photos[0]) : '', photoCount: photos.length };
+}
+
+// บันทึกโปรไฟล์ของ targetId โดยใช้ key PIN ของผู้แก้ (เจ้าของเอง หรือ Admin) — โปรไฟล์เต็ม + การ์ดในชุดเดียวกัน
 async function saveProfile(targetId, byKey, profile) {
   const db = authDb();
+  const card = await profileCardOf(profile);
+  const now = Date.now();
   const editRef = db.collection('profileEdits').doc();
   const batch = db.batch();
   batch.set(editRef, { user: targetId, by: byKey });
-  batch.set(db.collection('profiles').doc(targetId), { ...normalizeProfile(profile), updatedAt: Date.now(), edit: editRef.id });
+  batch.set(db.collection('profiles').doc(targetId), { ...normalizeProfile(profile), updatedAt: now, edit: editRef.id });
+  batch.set(db.collection('profileCards').doc(targetId), { ...card, updatedAt: now, edit: editRef.id });
   await batch.commit();
+  fullProfileCache[targetId] = Promise.resolve({ ...emptyProfile(), ...normalizeProfile(profile), updatedAt: now });
+  return now;
+}
+
+// สร้างการ์ดให้โปรไฟล์ที่บันทึกไว้ก่อนมีระบบการ์ด (เจ้าของเอง หรือ Admin ทำให้ทุกคน)
+async function saveProfileCard(targetId, byKey, profile) {
+  const db = authDb();
+  const card = await profileCardOf(profile);
+  const editRef = db.collection('profileEdits').doc();
+  const batch = db.batch();
+  batch.set(editRef, { user: targetId, by: byKey });
+  batch.set(db.collection('profileCards').doc(targetId), { ...card, updatedAt: profile.updatedAt || Date.now(), edit: editRef.id });
+  await batch.commit();
+}
+
+// ย่อรูป data URL ให้เหลือด้านยาว PROFILE_THUMB_SIDE (สำหรับรายชื่อ / รูปเล็กในไทม์ไลน์)
+function makeThumb(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, PROFILE_THUMB_SIDE / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = () => resolve('');
+    img.src = dataUrl;
+  });
 }
 
 // ย่อรูปเป็น JPEG ด้านยาวไม่เกิน maxSide และขนาดไม่เกิน PROFILE_PHOTO_MAX_BYTES

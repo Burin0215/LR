@@ -9,12 +9,12 @@
     <!-- ?v= : เปลี่ยนทุกครั้งที่แก้ไฟล์ .js เพื่อให้เบราว์เซอร์โหลดเวอร์ชันใหม่ (ทั้ง index.html และ vault.html) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260927c"></script>
-    <script src="auth.js?v=20260927c"></script>
-    <script src="profile.js?v=20260927c"></script>
-    <script src="inventory.js?v=20260927c"></script>
-    <script src="timeline.js?v=20260927c"></script>
-    <script src="notify.js?v=20260927c"></script>
+    <script src="firebase-config.js?v=20260928a"></script>
+    <script src="auth.js?v=20260928a"></script>
+    <script src="profile.js?v=20260928a"></script>
+    <script src="inventory.js?v=20260928a"></script>
+    <script src="timeline.js?v=20260928a"></script>
+    <script src="notify.js?v=20260928a"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -887,17 +887,78 @@
         const MEMBER_USERS = ACCOUNTS.filter(a => a.role !== 'admin').map(toUser);
         const VAULT_URL = 'vault.html';
 
-        // ใส่ข้อมูลโปรไฟล์จาก Firestore ลงในผู้ใช้แต่ละคน
+        // ใส่ข้อมูลการ์ดโปรไฟล์จาก Firestore ลงในผู้ใช้แต่ละคน (รูปเล็ก thumb — รูปเต็มโหลดตอนเปิดดู)
         let PROFILES_MAP = {};
+        let profileCardsReady = false;
         function applyProfiles(map) {
             PROFILES_MAP = map;
             [...ADMIN_USERS, ...MEMBER_USERS].forEach(u => {
                 const p = map[u.id] || emptyProfile();
                 u.bio = p.bio || '';
                 u.interests = p.tags || [];
-                u.avatarImg = (p.photos && p.photos[0]) || '';
+                u.avatarImg = p.thumb || '';
                 u.avatarType = u.avatarImg ? 'image' : 'emoji';
             });
+        }
+
+        // รูปเต็มของโปรไฟล์: { [userId]: { at: updatedAt ของการ์ดตอนโหลด, photos[] } } — โหลดเมื่อเปิดดูการ์ด
+        const FULL_PHOTOS = {};
+        function profilePhotos(userId) {
+            const card = PROFILES_MAP[userId];
+            const full = FULL_PHOTOS[userId];
+            if (full && (!card || full.at === card.updatedAt)) return full.photos;
+            return card && card.thumb ? [card.thumb] : [];
+        }
+        function ensureFullPhotos(userId, onLoaded) {
+            const card = PROFILES_MAP[userId];
+            if (!card || !card.photoCount) return;
+            const full = FULL_PHOTOS[userId];
+            if (full && full.at === card.updatedAt) return;
+            const at = card.updatedAt;
+            loadFullProfile(userId, !!full).then(p => {
+                FULL_PHOTOS[userId] = { at, photos: (p && p.photos) || [] };
+                onLoaded();
+            }).catch(() => {});
+        }
+
+        // โปรไฟล์ที่บันทึกไว้ก่อนมีการ์ด: แสดงจากโปรไฟล์เต็มไปก่อน แล้วสร้างการ์ดให้
+        // (เจ้าของสร้างของตัวเอง / Admin สร้างให้ทุกคนที่ยังไม่มี) — ครั้งเดียวต่อคน
+        const CARDLESS = new Map(); // userId → โปรไฟล์เต็ม
+        const cardChecked = new Set();
+        const cardWritten = new Set();
+        async function fillMissingProfileCards() {
+            if (!profileCardsReady) return;
+            let changed = false;
+            for (const u of [...ADMIN_USERS, ...MEMBER_USERS]) {
+                if (cardChecked.has(u.id) || PROFILES_MAP[u.id]) continue;
+                cardChecked.add(u.id);
+                let full = null;
+                try { full = await loadFullProfile(u.id); } catch (e) { cardChecked.delete(u.id); continue; }
+                if (!full || PROFILES_MAP[u.id]) continue;
+                CARDLESS.set(u.id, full);
+                FULL_PHOTOS[u.id] = { at: full.updatedAt, photos: full.photos || [] };
+                PROFILES_MAP[u.id] = { ...full, thumb: (full.photos || [])[0] || '', photoCount: (full.photos || []).length };
+                changed = true;
+            }
+            if (changed) { applyProfiles(PROFILES_MAP); refreshProfileViews(); }
+            const session = currentSession();
+            if (!session || !session.key) return;
+            const me = accountId(session.name);
+            CARDLESS.forEach((full, id) => {
+                if (cardWritten.has(id) || (session.role !== 'admin' && me !== id)) return;
+                cardWritten.add(id);
+                saveProfileCard(id, session.key, full).catch(() => cardWritten.delete(id));
+            });
+        }
+
+        function refreshProfileViews() {
+            renderUserLists();
+            if (!currentUser) return;
+            renderHeaderProfile();
+            renderOwnProfile();
+            renderTimeline();
+            if (viewedCommunityUser) renderCommunityMemberDetail(viewedCommunityUser);
+            else renderDashboardMembers();
         }
 
         // โพสต์ในไทม์ไลน์ — มาจาก Firestore (timeline.js) อัปเดตอัตโนมัติ
@@ -1104,6 +1165,7 @@
             subscribeMentions();
             subscribeOneOnOneMine();
             switchMainTab('timeline');
+            fillMissingProfileCards();
         }
 
         function renderHeaderProfile() {
@@ -2637,7 +2699,8 @@
 
             const p = { ...emptyProfile(), ...(PROFILES_MAP[user.id] || {}) };
             const theme = PROFILE_THEMES[p.theme] || PROFILE_THEMES.rose;
-            const photos = p.photos || [];
+            const photos = profilePhotos(user.id);
+            ensureFullPhotos(user.id, () => { if (cardUsers[containerId] && cardUsers[containerId].id === user.id) renderProfileCard(user, containerId); });
             const idx = Math.min(cardPhotoIndex[containerId] || 0, Math.max(photos.length - 1, 0));
             cardPhotoIndex[containerId] = idx;
             const isMe = currentUser && user.id === currentUser.id;
@@ -2703,7 +2766,7 @@
         function stepCardPhoto(containerId, delta) {
             const user = cardUsers[containerId];
             if (!user) return;
-            const count = ((PROFILES_MAP[user.id] || {}).photos || []).length;
+            const count = profilePhotos(user.id).length;
             if (count < 2) return;
             cardPhotoIndex[containerId] = ((cardPhotoIndex[containerId] || 0) + delta + count) % count;
             renderProfileCard(user, containerId);
@@ -3433,9 +3496,13 @@
             el.classList.toggle('hidden', !msg);
         }
 
-        function openEditProfileModal() {
+        async function openEditProfileModal() {
             if (!currentUser) return;
-            profileDraft = { ...emptyProfile(), ...JSON.parse(JSON.stringify(PROFILES_MAP[currentUser.id] || emptyProfile())) };
+            // แก้ไขจากโปรไฟล์เต็ม (รูปทุกรูป) — การ์ดมีแค่รูปย่อ
+            let full = null;
+            try { full = await loadFullProfile(currentUser.id); } catch (e) { showToast('โหลดโปรไฟล์ไม่ได้ ลองใหม่อีกครั้ง'); return; }
+            const { thumb, photoCount, ...cardFields } = PROFILES_MAP[currentUser.id] || {};
+            profileDraft = { ...emptyProfile(), ...JSON.parse(JSON.stringify(full || { ...cardFields, photos: [] })) };
             profilePhotoBusy = false;
             profileSaving = false;
             setEditProfileError('');
@@ -3641,7 +3708,8 @@
             profileSaving = true;
             renderEditProfileSaveBtn();
             try {
-                await saveProfile(currentUser.id, session.key, profileDraft);
+                const savedAt = await saveProfile(currentUser.id, session.key, profileDraft);
+                FULL_PHOTOS[currentUser.id] = { at: savedAt, photos: normalizeProfile(profileDraft).photos };
                 profileSaving = false;
                 closeEditProfileModal();
                 triggerCelebration();
@@ -3733,17 +3801,14 @@
             renderUserLists();
             initLightboxPanAndZoom();
 
-            // โปรไฟล์ของทุกคน (ทุกเครื่องเห็นเหมือนกัน) — อัปเดตหน้าจอเมื่อมีการแก้ไข
+            // การ์ดโปรไฟล์ของทุกคน (จำไว้ในเครื่อง + ฟังเฉพาะที่แก้ไข) — อัปเดตหน้าจอเมื่อมีการแก้ไข
             try {
-                subscribeProfiles(map => {
+                subscribeProfileCards((map, fromServer) => {
+                    // โปรไฟล์ที่ยังไม่มีการ์ด (แสดงจากโปรไฟล์เต็มไปก่อน) — คงไว้จนการ์ดมา
+                    CARDLESS.forEach((full, id) => { if (map[id]) CARDLESS.delete(id); else map[id] = PROFILES_MAP[id]; });
                     applyProfiles(map);
-                    renderUserLists();
-                    if (!currentUser) return;
-                    renderHeaderProfile();
-                    renderOwnProfile();
-                    renderTimeline();
-                    if (viewedCommunityUser) renderCommunityMemberDetail(viewedCommunityUser);
-                    else renderDashboardMembers();
+                    if (fromServer && !profileCardsReady) { profileCardsReady = true; fillMissingProfileCards(); }
+                    refreshProfileViews();
                 }, () => {});
             } catch (err) { console.warn(err); }
 

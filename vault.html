@@ -7,10 +7,10 @@
     <!-- รายชื่อผู้ใช้ + ตรวจ/เปลี่ยน PIN ผ่าน Firebase (Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=20260927c"></script>
-    <script src="auth.js?v=20260927c"></script>
-    <script src="inventory.js?v=20260927c"></script>
-    <script src="notify.js?v=20260927c"></script>
+    <script src="firebase-config.js?v=20260928a"></script>
+    <script src="auth.js?v=20260928a"></script>
+    <script src="inventory.js?v=20260928a"></script>
+    <script src="notify.js?v=20260928a"></script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -1737,15 +1737,31 @@
                 });
 
 
-                let inventoriesSeeded = false;
+                // Admin: คลังของทุกคน / Member: เฉพาะคลังของตัวเอง (ประหยัดโควตาอ่านของ Firebase)
+                let invUnsub = null;
+                let invScope = null;
+                watch(() => (isAdmin.value ? '*' : selectedIdentityId.value), (scope) => {
+                    if (scope === invScope) return;
+                    invScope = scope;
+                    if (invUnsub) { invUnsub(); invUnsub = null; }
+                    invDocs.value = {};
+                    if (!scope) return;
+                    let seeded = false;
+                    try {
+                        invUnsub = subscribeInventories((map) => {
+                            invDocs.value = map;
+                            if (!seeded) {
+                                seeded = true;
+                                const ids = scope === '*' ? identities.map(i => i.id) : [scope];
+                                ensureInventories(ids, map).catch(() => {});
+                            }
+                        }, (err) => triggerToast('โหลดคลังไม่ได้: ' + (err && err.message ? err.message : err)), scope === '*' ? undefined : scope);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }, { immediate: true });
+
                 try {
-                    subscribeInventories((map) => {
-                        invDocs.value = map;
-                        if (!inventoriesSeeded) {
-                            inventoriesSeeded = true;
-                            ensureInventories(identities.map(i => i.id), map).catch(() => {});
-                        }
-                    }, (err) => triggerToast('โหลดคลังไม่ได้: ' + (err && err.message ? err.message : err)));
                     subscribeRoulette((prizes) => {
                         rouletteConfigured.value = !!prizes;
                         if (prizeSaveTimer) return; // Admin กำลังแก้อยู่ — ไม่ทับสิ่งที่พิมพ์

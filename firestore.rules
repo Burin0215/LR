@@ -98,6 +98,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // การ์ดโปรไฟล์ (ไม่มีรูปเต็ม — thumb = รูปแรกย่อเล็ก) ใช้แสดงรายชื่อ/ไทม์ไลน์ บันทึกด้วยใบอนุญาตเดียวกับโปรไฟล์
+    match /profileCards/{u} {
+      allow read: if true;
+      allow create, update: if u.matches('[a-z]+')
+                    && request.resource.data.keys().hasOnly(['thumb', 'photoCount', 'bio', 'tags', 'prompts', 'mbti', 'zodiac', 'theme', 'updatedAt', 'edit'])
+                    && request.resource.data.thumb is string && request.resource.data.thumb.size() <= 40000
+                    && request.resource.data.photoCount is int && request.resource.data.photoCount >= 0 && request.resource.data.photoCount <= 3
+                    && request.resource.data.bio is string && request.resource.data.bio.size() <= 150
+                    && request.resource.data.tags is list && request.resource.data.tags.size() <= 8
+                    && request.resource.data.prompts is list && request.resource.data.prompts.size() <= 3
+                    && request.resource.data.mbti is string && request.resource.data.zodiac is string
+                    && request.resource.data.theme is string && request.resource.data.updatedAt is number
+                    && request.resource.data.edit is string
+                    && !exists(/databases/$(database)/documents/profileEdits/$(request.resource.data.edit))
+                    && getAfter(/databases/$(database)/documents/profileEdits/$(request.resource.data.edit)).data.user == u;
+      allow delete: if false;
+    }
+
     // ใบอนุญาตแก้โปรไฟล์: by ต้องเป็น key PIN ที่ยังใช้ได้ของเจ้าของ หรือของ Admin
     match /profileEdits/{e} {
       allow read: if false;
