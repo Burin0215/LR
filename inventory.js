@@ -154,8 +154,9 @@ function subscribeOneOnOne(onChange, onError, fromUser) {
 }
 
 // Admin: Start / หยุด (ใบอนุญาต kind 'admin' ในชุดเดียวกัน)
-function startOneOnOne(requestId, byKey, adminName) {
-  const now = Date.now();
+// startAt: เวลาเริ่มนับ (ค่าเริ่มต้น = ตอนนี้) — Admin ระบุย้อนหลังได้ กรณีเริ่มคุยไปแล้วแต่กด Start ทีหลัง
+function startOneOnOne(requestId, byKey, adminName, startAt = Date.now()) {
+  const now = startAt;
   return commitInventoryChange({
     op: { kind: 'admin' }, by: byKey,
     extra: (batch, db, opId) => batch.update(db.collection('oneOnOne').doc(requestId), {

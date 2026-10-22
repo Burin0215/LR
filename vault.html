@@ -962,9 +962,21 @@
                     <p class="text-sm text-gray-600 mt-2">{{ getIdentityName(oooConfirm.req.from) }} ➔ {{ getIdentityName(oooConfirm.req.to) }}</p>
                     <p class="text-xs text-gray-400 mt-0.5">รหัส <span class="font-mono font-bold text-gray-700">{{ refCode(oooConfirm.req.id) }}</span></p>
                 </div>
+                <!-- เวลาเริ่มนับ: ย้อนหลังได้ (เริ่มคุยไปแล้วแต่กด Start ทีหลัง) -->
+                <div v-if="oooConfirm.action === 'start'" class="text-left space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-600">เวลาเริ่มคุย</label>
+                    <div class="flex gap-2">
+                        <input type="datetime-local" v-model="oooStartAt" :max="oooStartMax" :min="oooStartMin"
+                               class="flex-1 min-w-0 px-3 py-2 bg-cream-50 border border-cream-300 rounded-xl text-xs focus:outline-none focus:border-rosepink-400">
+                        <button type="button" @click="oooStartAt = toLocalInput(Date.now())" class="shrink-0 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ตอนนี้</button>
+                    </div>
+                    <p class="text-[12px]" :class="oooStartError ? 'text-red-500' : 'text-gray-400'">
+                        {{ oooStartError || ('ครบ 24 ชม. เมื่อ ' + formatDate(oooStartMs + ONE_ON_ONE_MS)) }}
+                    </p>
+                </div>
                 <div class="flex gap-2">
                     <button @click="oooConfirm = null" class="flex-1 py-2.5 bg-cream-100 hover:bg-cream-200 text-gray-700 font-semibold rounded-xl text-xs">ยกเลิก</button>
-                    <button @click="runOooAction" :disabled="oooBusy" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
+                    <button @click="runOooAction" :disabled="oooBusy || (oooConfirm.action === 'start' && !!oooStartError)" class="flex-1 py-2.5 bg-rosepink-500 hover:bg-rosepink-600 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50">
                         {{ oooBusy ? 'กำลังบันทึก...' : oooConfirm.action === 'start' ? '▶ Start' : '■ หยุด' }}
                     </button>
                 </div>
@@ -1483,7 +1495,29 @@
                             || getIdentityName(r.from).toLowerCase().includes(q) || getIdentityName(r.to).toLowerCase().includes(q))
                         .sort((a, b) => order[a.state] - order[b.state] || b.createdAt - a.createdAt);
                 });
-                const askOoo = (req, action) => { oooConfirm.value = { req, action }; };
+                // เวลาเริ่มนับที่ Admin เลือก (datetime-local, เวลาท้องถิ่น) — ย้อนหลังได้ไม่เกิน 24 ชม.
+                const pad2 = (n) => String(n).padStart(2, '0');
+                const toLocalInput = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+                const oooStartAt = ref('');
+                const oooStartInitial = ref('');
+                const oooStartMax = computed(() => toLocalInput(nowTick.value));
+                const oooStartMin = computed(() => toLocalInput(nowTick.value - ONE_ON_ONE_MS + 60e3));
+                // ไม่ได้แก้ค่าเริ่มต้น = ใช้เวลาตอนกดจริง
+                const oooStartMs = computed(() => {
+                    if (!oooStartAt.value || oooStartAt.value === oooStartInitial.value) return nowTick.value;
+                    return new Date(oooStartAt.value).getTime();
+                });
+                const oooStartError = computed(() => {
+                    const t = oooStartMs.value;
+                    if (!Number.isFinite(t)) return 'กรุณาเลือกเวลาเริ่ม';
+                    if (t > nowTick.value + 60e3) return 'เวลาเริ่มต้องไม่เกินเวลาปัจจุบัน';
+                    if (t + ONE_ON_ONE_MS <= nowTick.value) return 'ย้อนหลังเกิน 24 ชม. ไม่ได้';
+                    return '';
+                });
+                const askOoo = (req, action) => {
+                    oooStartInitial.value = oooStartAt.value = toLocalInput(Date.now());
+                    oooConfirm.value = { req, action };
+                };
                 const runOooAction = async () => {
                     const c = oooConfirm.value;
                     if (!c || oooBusy.value) return;
@@ -1493,8 +1527,10 @@
                     try {
                         if (c.action === 'start') {
                             const by = currentIdentity.value ? currentIdentity.value.name : 'Admin';
-                            await startOneOnOne(c.req.id, key, by);
-                            notifyDiscord('ooo_start', { from: getIdentityName(c.req.from), to: getIdentityName(c.req.to), by, code: refCode(c.req.id), endsAt: Date.now() + ONE_ON_ONE_MS });
+                            if (oooStartError.value) { triggerToast(oooStartError.value); return; }
+                            const startAt = Math.min(oooStartMs.value, Date.now());
+                            await startOneOnOne(c.req.id, key, by, startAt);
+                            notifyDiscord('ooo_start', { from: getIdentityName(c.req.from), to: getIdentityName(c.req.to), by, code: refCode(c.req.id), endsAt: startAt + ONE_ON_ONE_MS });
                             oooWasRunning.add(c.req.id);
                             triggerToast(`เริ่มนับถอยหลัง 24 ชม. แล้ว ⏳ (${getIdentityName(c.req.from)} ➔ ${getIdentityName(c.req.to)})`);
                         } else {
@@ -2097,6 +2133,13 @@
                     oooBusy,
                     nowTick,
                     askOoo,
+                    oooStartAt,
+                    oooStartMax,
+                    oooStartMin,
+                    oooStartMs,
+                    oooStartError,
+                    toLocalInput,
+                    ONE_ON_ONE_MS,
                     runOooAction,
                     identityAvatar,
                     formatCountdown,

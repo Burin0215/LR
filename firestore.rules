@@ -222,7 +222,7 @@ service cloud.firestore {
                     && freshOp(request.resource.data.edit)
                     && opAfter(request.resource.data.edit).kind == 'admin'
                     && ((resource.data.status == 'waiting' && request.resource.data.status == 'running'
-                         && nowish(request.resource.data.startedAt)
+                         && startedAtOk(request.resource.data.startedAt)
                          && request.resource.data.endsAt == request.resource.data.startedAt + 86400000
                          && request.resource.data.startedBy is string)
                      || (resource.data.status == 'running' && request.resource.data.status == 'stopped'
@@ -324,6 +324,10 @@ service cloud.firestore {
     // เวลาจากเครื่องผู้ใช้ต้องใกล้เวลาจริง (±5 นาที)
     function nowish(t) {
       return t is number && t > request.time.toMillis() - 300000 && t < request.time.toMillis() + 300000;
+    }
+    // เวลาเริ่ม 1:1 ที่ Admin ระบุ: ย้อนหลังได้ไม่เกิน 24 ชม. (ไม่เกินเวลาครบกำหนด) และไม่เลยเวลาจริงเกิน 5 นาที
+    function startedAtOk(t) {
+      return t is number && t > request.time.toMillis() - 86400000 && t < request.time.toMillis() + 300000;
     }
     function validPostBody(d) {
       return d.content is string && d.content.size() <= 1000
