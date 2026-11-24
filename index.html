@@ -474,19 +474,6 @@
                     <div id="ownProfilePosts" class="space-y-3"></div>
                 </section>
 
-                <!-- Personal Portfolio Showcase (Managed by Admin) -->
-                <div class="glass-card bg-white/95 rounded-3xl p-6 sm:p-8 border border-pink-300/80 shadow-lg space-y-4 max-w-5xl mx-auto">
-                    <div class="flex items-center justify-between pb-3 border-b border-pink-100">
-                        <div>
-                            <h4 class="text-base font-bold text-stone-800 flex items-center gap-2">
-                                <i class="fa-solid fa-camera-retro text-rose-500"></i>
-                                <span class="whitespace-nowrap">Roulette Collection</span>
-                            </h4>
-                        </div>
-                        <div id="profilePortfolioAdminControls"></div>
-                    </div>
-                    <div id="profilePortfolioGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 pt-2"></div>
-                </div>
             </div>
         </main>
     </div>
@@ -2645,7 +2632,7 @@
             }
 
             // Portfolio Controls & Grid
-            renderPortfolioSection(user, 'comm');
+            renderPortfolioSection(user);
         }
 
         // ================= การ์ดโปรไฟล์ (สไตล์แอปหาคู่) =================
@@ -2814,13 +2801,11 @@
             const invBtn = document.getElementById('personalInventoryLinkBtn');
             if (invBtn) invBtn.href = currentUser.role === 'ADMIN' ? `${VAULT_URL}#admin` : `${VAULT_URL}#inventory`;
             renderRoseBadges();
-
-            renderPortfolioSection(currentUser, 'profile');
         }
 
-        function renderPortfolioSection(targetUser, sectionPrefix) {
-            const controls = document.getElementById(`${sectionPrefix}PortfolioAdminControls`);
-            const grid = document.getElementById(`${sectionPrefix}PortfolioGrid`);
+        function renderPortfolioSection(targetUser) {
+            const controls = document.getElementById('commPortfolioAdminControls');
+            const grid = document.getElementById('commPortfolioGrid');
             if (!controls || !grid) return;
 
             const items = targetUser.portfolio || [];
@@ -3006,9 +2991,7 @@
 
             closePortfolioModal();
             if (viewedCommunityUser && viewedCommunityUser.id === targetUser.id) {
-                renderPortfolioSection(targetUser, 'comm');
-            } else {
-                renderPortfolioSection(targetUser, 'profile');
+                renderPortfolioSection(targetUser);
             }
             triggerCelebration();
         }
@@ -3019,9 +3002,7 @@
             targetUser.portfolio = targetUser.portfolio.filter(p => p.id !== itemId);
 
             if (viewedCommunityUser && viewedCommunityUser.id === targetUser.id) {
-                renderPortfolioSection(targetUser, 'comm');
-            } else {
-                renderPortfolioSection(targetUser, 'profile');
+                renderPortfolioSection(targetUser);
             }
         }
 
