@@ -2757,8 +2757,10 @@
                 return;
             }
 
+            const showTimelineLink = view.container.id === 'communityProfilePosts';
             view.container.innerHTML = view.posts.slice(0, view.limit).map(post => {
                 const images = [post.image, post.image2].map(cleanImage).filter(Boolean);
+                const hasMultipleImages = images.length > 1;
                 return `
                     <article class="glass-card bg-white/95 rounded-2xl border border-pink-200 p-4 sm:p-5 space-y-3 shadow-sm">
                         <div class="flex flex-wrap items-center gap-2 text-xs text-stone-500">
@@ -2767,10 +2769,10 @@
                             ${post.edited ? '<span>(แก้ไขแล้ว)</span>' : ''}
                         </div>
                         ${post.content ? `<p class="text-sm text-stone-700 whitespace-pre-line break-words">${renderRichText(post.content)}</p>` : ''}
-                        ${images.length ? `<div class="grid ${images.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
-                            ${images.map((src, index) => `<img src="${escapeHtml(src)}" alt="รูปที่ ${index + 1} ในโพสต์" loading="lazy" class="mx-auto max-h-80 max-w-full rounded-xl object-contain">`).join('')}
+                        ${images.length ? `<div class="grid ${hasMultipleImages ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
+                            ${images.map((src, index) => `<img src="${escapeHtml(src)}" alt="รูปที่ ${index + 1} ในโพสต์" loading="lazy" class="rounded-xl ${hasMultipleImages ? 'block aspect-square w-full object-cover' : 'mx-auto max-h-80 max-w-full object-contain'}">`).join('')}
                         </div>` : ''}
-                        <button type="button" data-timeline-post="${escapeHtml(post.id)}" class="text-xs font-semibold text-rose-700 hover:underline">ดูในไทม์ไลน์</button>
+                        ${showTimelineLink ? `<button type="button" data-timeline-post="${escapeHtml(post.id)}" class="text-xs font-semibold text-rose-700 hover:underline">ดูในไทม์ไลน์</button>` : ''}
                     </article>`;
             }).join('');
             view.container.querySelectorAll('[data-timeline-post]').forEach(button => {
