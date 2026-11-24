@@ -376,7 +376,7 @@
 
             <!-- 2. COMMUNITY SECTION (DIRECTORY & MEMBER PROFILE VIEW) -->
             <div id="communitySection" class="hidden space-y-6">
-                <!-- 2.0 Rose Spotlight: 3 อันดับคนที่ได้รับดอกกุหลาบจาก Member มากที่สุด (ไม่แสดงจำนวนดอก) -->
+                <!-- 2.0 Rose Spotlight: ผู้ได้รับดอกกุหลาบจาก Member มากที่สุดหนึ่งคน (ไม่แสดงจำนวนดอก) -->
                 <div id="roseSpotlight" class="hidden"></div>
 
                 <!-- 2.1 Directory View (All Members) -->
@@ -2378,12 +2378,11 @@
             scrollToPendingPost();
         }
 
-        // ================= Rose Spotlight (Community) — ประกาศผลทุกวันพุธ 00:00 =================
-        // ผลประจำสัปดาห์ = ดอกกุหลาบที่ได้รับจาก Member (มอบ + ถูกขอ Request 1:1) ในสัปดาห์ที่เพิ่งจบ (พุธ–อังคาร)
-        // ไม่นับที่ Admin ปรับยอด / ยอดเท่ากันได้อันดับร่วม / ไม่แสดงจำนวนดอก
-        // ก่อนประกาศครั้งแรก (และระหว่างรอ) แสดงโหมด "ลุ้นผล" + นับถอยหลัง
-        const SPOTLIGHT_FIRST_ANNOUNCE = Date.parse('2026-09-30T00:00:00+07:00');
-        const SPOTLIGHT_WEEK_MS = 7 * 86400e3;
+        // ================= Rose Spotlight (Community) — ประกาศผลเมื่อปิดรับดอกกุหลาบ =================
+        // ผลประจำสัปดาห์ = ดอกกุหลาบที่ได้รับจาก Member (มอบ + ถูกขอ Request 1:1) ตั้งแต่เริ่มสัปดาห์จนถึงเวลาปิดรับ
+        // ไม่นับที่ Admin ปรับยอด / ยอดเท่ากันเรียงตามชื่อ / ไม่แสดงจำนวนดอก
+        // ก่อนถึงเวลาปิดรับ แสดงวันและเวลาประกาศผล
+        const GIFT_CLOSE_AT = Date.parse('2026-11-24T20:30:00+07:00');
         let spotlightResult = null;   // { weekStart, top: [{ user, rank }] }
         let spotlightLoading = false;
         let spotlightTimer = null;
@@ -2408,26 +2407,19 @@
                 .map(u => ({ user: u, count: counts[u.id] || 0 }))
                 .filter(x => x.count > 0)
                 .sort((a, b) => b.count - a.count || a.user.name.localeCompare(b.user.name));
-            const out = [];
-            let rank = 0, prev = null;
-            for (const x of list) {
-                if (x.count !== prev) { rank++; prev = x.count; }
-                if (rank > 3) break;
-                out.push({ userId: x.user.id, rank });
-            }
-            return out;
+            return list.slice(0, 1).map(({ user }) => ({ userId: user.id, rank: 1 }));
         }
 
         // ผลของสัปดาห์ที่จบแล้วไม่เปลี่ยนอีก → เก็บไว้ในเครื่อง ไม่ต้องโหลดซ้ำ (ประหยัดโควตา)
         async function loadSpotlightResult() {
             const now = Date.now();
-            if (now < SPOTLIGHT_FIRST_ANNOUNCE || spotlightLoading) return;
-            const end = wednesdayStart(now);
-            const start = end - SPOTLIGHT_WEEK_MS;
+            if (now < GIFT_CLOSE_AT || spotlightLoading) return;
+            const end = GIFT_CLOSE_AT;
+            const start = wednesdayStart(end);
             if (spotlightResult && spotlightResult.weekStart === start) return;
             if (now - spotlightLastTry < 30000) return; // โหลดไม่สำเร็จ → ลองใหม่ทุก 30 วินาที (ไม่ถี่เกิน)
             spotlightLastTry = now;
-            const cacheKey = `rose_spotlight_${start}`;
+            const cacheKey = `rose_spotlight_final_${end}`;
             let top = null;
             try { top = JSON.parse(localStorage.getItem(cacheKey)); } catch (e) { top = null; }
             if (!Array.isArray(top)) {
@@ -2449,27 +2441,14 @@
             }
         }
 
-        function formatDHMS(ms) {
-            const t = Math.max(0, Math.floor(ms / 1000));
-            const d = Math.floor(t / 86400), h = Math.floor(t / 3600) % 24, m = Math.floor(t / 60) % 60, sec = t % 60;
-            const pad = (n) => String(n).padStart(2, '0');
-            return `${d > 0 ? d + ' วัน ' : ''}${pad(h)}:${pad(m)}:${pad(sec)}`;
-        }
-        const thaiDate = (t, opts) => new Date(t).toLocaleDateString('th-TH', opts || { weekday: 'long', day: 'numeric', month: 'short' });
+        const thaiDate = (time, opts) => new Date(time).toLocaleDateString('th-TH', {
+            ...opts, timeZone: 'Asia/Bangkok'
+        });
 
-        function nextAnnounceAt(now = Date.now()) {
-            return now < SPOTLIGHT_FIRST_ANNOUNCE ? SPOTLIGHT_FIRST_ANNOUNCE : wednesdayStart(now) + SPOTLIGHT_WEEK_MS;
-        }
-
-        // จับเวลาทุกวินาที (ไม่แสดงตัวเลขนับถอยหลังบนหน้า) — ครบเวลาประกาศแล้วเปิดผลอัตโนมัติ
         function tickSpotlight() {
             const box = document.getElementById('roseSpotlight');
             if (!box || box.classList.contains('hidden')) return;
-            const now = Date.now();
-            const el = document.getElementById('spotlightCountdown');
-            if (el) el.textContent = formatDHMS(nextAnnounceAt(now) - now);
-            const due = now >= SPOTLIGHT_FIRST_ANNOUNCE && (!spotlightResult || spotlightResult.weekStart !== wednesdayStart(now) - SPOTLIGHT_WEEK_MS);
-            if (due && !spotlightLoading) {
+            if (Date.now() >= GIFT_CLOSE_AT && !spotlightResult && !spotlightLoading) {
                 const wasTeaser = !spotlightResult;
                 loadSpotlightResult().then(() => { if (wasTeaser && spotlightResult && spotlightResult.top.length) triggerCelebration(); });
             }
@@ -2492,30 +2471,15 @@
         }
 
         // โหมดลุ้นผล: เงาปริศนา 3 อันดับ + นับถอยหลังถึงวันประกาศ
-        function spotlightTeaser(now) {
-            const at = nextAnnounceAt(now);
-            const mystery = (size, foil, label) => `
-                <div class="flex flex-col items-center">
-                    <div class="${size} rounded-full p-[3px] ${foil} foil-shimmer">
-                        <div class="w-full h-full rounded-full bg-gradient-to-tr from-rose-200 via-pink-100 to-amber-100 border-2 border-white flex items-center justify-center">
-                            <span class="font-serif-luxury font-bold text-rose-400/80 ${size.includes('w-28') ? 'text-6xl' : 'text-4xl'}">?</span>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-xs font-semibold text-stone-500">${label}</div>
-                </div>`;
+        function spotlightTeaser() {
+            const date = thaiDate(GIFT_CLOSE_AT, { day: 'numeric', month: 'short' });
+            const message = isGiftClosed()
+                ? (spotlightResult ? 'รอบนี้ไม่มีผู้ได้รับดอกกุหลาบจากสมาชิก' : 'กำลังโหลดผล')
+                : `ประกาศผล ${date} เวลา 20:30 น. (เวลาไทย)`;
             return spotlightShell(`
                 <div class="text-center space-y-2">
-                    <p class="text-[12px] tracking-[0.2em] text-rose-500 uppercase font-semibold">Most Adored</p>
-                    <h3 class="font-serif-luxury text-4xl sm:text-5xl font-bold gold-gradient-text leading-tight">Who Will Be the Rose Darling?</h3>
-                    <p class="text-sm text-stone-500">3 อันดับที่ได้รับดอกกุหลาบจาก Member มากที่สุดประจำสัปดาห์</p>
-                </div>
-                <div class="flex items-end justify-center gap-4 sm:gap-8">
-                    ${mystery('w-20 h-20 sm:w-24 sm:h-24', 'silver-foil', 'อันดับ 2')}
-                    <div class="-mt-4">${mystery('w-28 h-28 sm:w-32 sm:h-32', 'gold-foil', '👑 อันดับ 1')}</div>
-                    ${mystery('w-20 h-20 sm:w-24 sm:h-24', 'bronze-foil', 'อันดับ 3')}
-                </div>
-                <div class="text-center space-y-1">
-                    <p class="text-sm font-semibold text-rose-600">ประกาศผล${thaiDate(at)} 00:00 น.</p>
+                    <h3 class="font-serif-luxury text-4xl font-bold gold-gradient-text">ขวัญใจดอกกุหลาบ</h3>
+                    <p class="text-sm text-stone-600">${message}</p>
                 </div>`);
         }
 
@@ -2529,56 +2493,26 @@
 
             const top = spotlightResult ? spotlightResult.top
                 .map(t => ({ user: findUserById(t.userId), rank: t.rank })).filter(t => t.user) : [];
-            if (now < SPOTLIGHT_FIRST_ANNOUNCE || !top.length) {
-                // ยังไม่ถึงวันประกาศครั้งแรก / สัปดาห์ที่แล้วยังไม่มีใครได้ดอกจาก Member → ลุ้นผลสัปดาห์นี้
-                box.innerHTML = spotlightTeaser(now);
+            if (now < GIFT_CLOSE_AT || !top.length) {
+                // แสดงสถานะระหว่างรอ หรือเมื่อไม่มีผู้ชนะ
+                box.innerHTML = spotlightTeaser();
                 box.classList.remove('hidden');
                 return;
             }
 
-            const weekStart = spotlightResult.weekStart;
-            const weekLabel = `${thaiDate(weekStart, { day: 'numeric', month: 'short' })} – ${thaiDate(weekStart + SPOTLIGHT_WEEK_MS - 1, { day: 'numeric', month: 'short' })}`;
-            const first = top.filter(t => t.rank === 1);
-            const rest = top.filter(t => t.rank !== 1);
-            const hero = first.length === 1 ? `
-                <div onclick="viewUserProfile('${first[0].user.id}')" class="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 cursor-pointer group">
+            const winner = top[0].user;
+            box.innerHTML = spotlightShell(`
+                <div onclick="viewUserProfile('${winner.id}')" class="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 cursor-pointer group">
                     <div class="relative">
-                        ${spotlightAvatar(first[0].user, 'w-36 h-36 sm:w-44 sm:h-44', 'gold-foil')}
+                        ${spotlightAvatar(winner, 'w-36 h-36 sm:w-44 sm:h-44', 'gold-foil')}
                         <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full gold-foil foil-shimmer text-white text-xs font-bold shadow whitespace-nowrap">👑 อันดับ 1</div>
                     </div>
                     <div class="text-center sm:text-left">
-                        <p class="text-[12px] tracking-[0.2em] text-rose-500 uppercase font-semibold">Most Adored · ${weekLabel}</p>
-                        <div class="font-serif-luxury text-5xl sm:text-6xl font-bold gold-gradient-text leading-tight group-hover:opacity-90 transition-opacity">${escapeHtml(first[0].user.name)}</div>
+                        <p class="text-[12px] tracking-[0.2em] text-rose-500 font-semibold">King of Love Roulette Season 2</p>
+                        <div class="font-serif-luxury text-5xl sm:text-6xl font-bold gold-gradient-text leading-tight group-hover:opacity-90 transition-opacity">${escapeHtml(winner.name)}</div>
                         <p class="text-sm text-stone-500 mt-1">ขวัญใจดอกกุหลาบประจำสัปดาห์ 🌹</p>
                     </div>
-                </div>` : `
-                <div class="text-center space-y-4">
-                    <p class="text-[12px] tracking-[0.2em] text-rose-500 uppercase font-semibold">Most Adored · ${weekLabel} · อันดับ 1 ร่วม</p>
-                    <div class="flex flex-wrap justify-center gap-6 sm:gap-10">
-                        ${first.map(t => `
-                            <div onclick="viewUserProfile('${t.user.id}')" class="flex flex-col items-center cursor-pointer group">
-                                <div class="relative">
-                                    ${spotlightAvatar(t.user, 'w-24 h-24 sm:w-28 sm:h-28', 'gold-foil')}
-                                    <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full gold-foil foil-shimmer text-white text-[11px] font-bold shadow whitespace-nowrap">👑 1</div>
-                                </div>
-                                <div class="font-serif-luxury text-3xl font-bold gold-gradient-text mt-3 group-hover:opacity-90">${escapeHtml(t.user.name)}</div>
-                            </div>`).join('')}
-                    </div>
-                </div>`;
-            const mini = (t) => `
-                <div onclick="viewUserProfile('${t.user.id}')" class="flex items-center gap-3 bg-white/80 hover:bg-white border border-pink-200 rounded-2xl px-4 py-3 shadow-sm cursor-pointer transition-all">
-                    <div class="font-serif-luxury text-3xl font-bold ${t.rank === 2 ? 'text-slate-400' : 'text-orange-400'} w-6 text-center">${t.rank}</div>
-                    ${spotlightAvatar(t.user, 'w-12 h-12', t.rank === 2 ? 'silver-foil' : 'bronze-foil')}
-                    <div class="min-w-0 flex-1">
-                        <div class="font-semibold text-stone-800 truncate">${escapeHtml(t.user.name)}</div>
-                        <div class="text-xs text-stone-400">อันดับ ${t.rank}</div>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-stone-300"></i>
-                </div>`;
-            box.innerHTML = spotlightShell(`
-                ${hero}
-                ${rest.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${rest.map(mini).join('')}</div>` : ''}
-                <p class="text-center text-xs text-stone-400">ประกาศผลครั้งถัดไป${thaiDate(nextAnnounceAt(now))} 00:00 น.</p>`);
+                </div>`);
             box.classList.remove('hidden');
         }
 
@@ -2668,9 +2602,9 @@
                 const canRequest = currentUser && currentUser.role === 'MEMBER' && user.role === 'MEMBER' && user.id !== currentUser.id;
                 reqContainer.innerHTML = canRequest ? `
                     <div class="grid grid-cols-2 gap-2.5">
-                    <button onclick="openGiftModal('${user.id}')" class="py-2.5 rounded-xl bg-white border border-pink-300 hover:bg-pink-50 text-pink-700 text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <button onclick="openGiftModal('${user.id}')" ${isGiftClosed() ? 'disabled' : ''} class="py-2.5 rounded-xl bg-white border border-pink-300 hover:bg-pink-50 text-pink-700 text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
                         <i class="fa-solid fa-gift text-xs"></i>
-                        <span>มอบดอกกุหลาบ</span>
+                        <span>${isGiftClosed() ? GIFT_CLOSED_MESSAGE : 'มอบดอกกุหลาบ'}</span>
                     </button>
                     <button onclick="openRequestModal('${user.id}')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-heart text-xs"></i>
@@ -3142,6 +3076,12 @@
         let giftTarget = null;
         let giftSending = false;
 
+        const GIFT_CLOSED_MESSAGE = 'ปิดการส่งดอกกุหลาบแล้ว';
+
+        function isGiftClosed(now = Date.now()) {
+            return now >= GIFT_CLOSE_AT;
+        }
+
         function setGiftError(msg) {
             const el = document.getElementById('giftErrorText');
             el.textContent = msg || '';
@@ -3160,7 +3100,7 @@
             document.getElementById('giftMyRoses').textContent = myRoseCount === null ? '-' : myRoseCount;
             document.getElementById('giftAmountInput').max = myRoseCount === null ? '' : myRoseCount;
             btn.textContent = giftSending ? 'กำลังมอบ...' : 'ยืนยันการมอบ 🎁';
-            btn.disabled = giftSending || myRoseCount === null || !valid || amount > myRoseCount;
+            btn.disabled = isGiftClosed() || giftSending || myRoseCount === null || !valid || amount > myRoseCount;
             const creditEl = document.getElementById('giftCreditText');
             if (giftTarget && myGiftCredits !== null) {
                 const now = creditProgressText(giftTarget);
@@ -3172,7 +3112,8 @@
                 creditEl.classList.remove('hidden');
             } else creditEl.classList.add('hidden');
             if (giftSending) return;
-            if (myRoseCount !== null && myRoseCount < 1) setGiftError('ยังไม่มีดอกกุหลาบที่ใช้ได้ — ได้จาก Admin และรางวัลวงล้อ');
+            if (isGiftClosed()) setGiftError(GIFT_CLOSED_MESSAGE);
+            else if (myRoseCount !== null && myRoseCount < 1) setGiftError('ยังไม่มีดอกกุหลาบที่ใช้ได้ — ได้จาก Admin และรางวัลวงล้อ');
             else if (valid && myRoseCount !== null && amount > myRoseCount) setGiftError('ดอกกุหลาบที่มีอยู่ของคุณไม่เพียงพอสำหรับการมอบ');
             else if (!keepError) setGiftError('');
         }
@@ -3237,6 +3178,10 @@
             const recipient = giftTarget;
             const amount = giftAmountValue();
             if (!sender || !recipient || giftSending || !Number.isInteger(amount) || amount <= 0) return;
+            if (isGiftClosed()) {
+                renderGiftForm();
+                return;
+            }
             const session = currentSession();
             if (!session || !session.key || accountId(session.name) !== sender.id) {
                 setGiftError('กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้ง');
@@ -3261,6 +3206,8 @@
                 const from = { ...emptyInventory(), ...fromSnap.data() };
                 const to = { ...emptyInventory(), ...toSnap.data() };
                 if (amount > from.rose) throw new Error('ดอกกุหลาบที่มีอยู่ของคุณไม่เพียงพอสำหรับการมอบ');
+
+                if (isGiftClosed()) throw new Error(GIFT_CLOSED_MESSAGE);
 
                 // ผู้ส่งเห็นว่าส่งให้ใคร / ผู้รับไม่เห็นชื่อผู้ส่ง / Admin เห็นชื่อผู้มอบ
                 await commitInventoryChange({

@@ -179,6 +179,8 @@ service cloud.firestore {
             && request.resource.data.keys().hasOnly(['kind', 'by'])
             && isAdminKey(request.resource.data.by))
         || (request.resource.data.kind == 'gift'
+            // 24 พ.ย. 2569 เวลา 20:30 น. (UTC+7)
+            && request.time < timestamp.date(2026, 11, 24) + duration.value(810, 'm')
             && request.resource.data.keys().hasOnly(['kind', 'by', 'from', 'to', 'amount'])
             && canAuthorize(request.resource.data.by, request.resource.data.from))
         || (request.resource.data.kind == 'spin'
