@@ -248,24 +248,29 @@
                     </div>
                 </div>
 
-                <!-- Sticky Note Nav Tabs (Order: Timeline -> Community -> Profile) — อยู่กึ่งกลาง กว้างเท่ากัน -->
+                <!-- Sticky Note Nav Tabs (Order: Timeline -> Community -> Hall of Frame -> Profile) — อยู่กึ่งกลาง กว้างเท่ากัน -->
                 <nav class="absolute left-1/2 -translate-x-1/2 -bottom-10 flex items-end gap-1.5 min-[360px]:gap-2 sm:gap-3 z-50 pointer-events-auto">
                     <!-- Tab 1: Timeline -->
-                    <button id="navTimelineBtn" onclick="switchMainTab('timeline')" class="relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-semibold text-xs transition-all duration-300 shadow-md flex items-center gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1">
+                    <button id="navTimelineBtn" onclick="switchMainTab('timeline')" class="relative w-[4.5rem] min-[360px]:w-20 sm:w-32 justify-center px-1 sm:px-2 py-2.5 rounded-b-2xl font-semibold text-[11px] sm:text-xs transition-all duration-300 shadow-md flex items-center gap-1 sm:gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1">
                         <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-rose-200/90 rounded-xs shadow-xs border border-rose-300/60 rotate-[-1deg]"></span>
-                        <i class="fa-solid fa-newspaper text-xs text-white"></i>
+                        <i class="fa-solid fa-newspaper hidden sm:inline-block text-xs text-white"></i>
                         <span>Timeline</span>
                     </button>
                     <!-- Tab 2: Community -->
-                    <button id="navCommunityBtn" onclick="switchMainTab('community')" class="relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
+                    <button id="navCommunityBtn" onclick="switchMainTab('community')" class="relative w-[4.5rem] min-[360px]:w-20 sm:w-32 justify-center px-1 sm:px-2 py-2.5 rounded-b-2xl font-medium text-[11px] sm:text-xs transition-all duration-300 shadow-sm flex items-center gap-1 sm:gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
                         <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-pink-200/80 rounded-xs shadow-xs border border-pink-300/60 rotate-[2deg]"></span>
-                        <i id="navCommunityIcon" class="fa-solid fa-users text-xs text-rose-500"></i>
+                        <i id="navCommunityIcon" class="fa-solid fa-users hidden sm:inline-block text-xs text-rose-500"></i>
                         <span id="navCommunityText" class="truncate">Community</span>
                     </button>
-                    <!-- Tab 3: Profile -->
-                    <button id="navProfileBtn" onclick="switchMainTab('profile')" class="relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
+                    <button id="navHallOfFrameBtn" onclick="switchMainTab('hallOfFrame')" class="relative w-[4.5rem] min-[360px]:w-20 sm:w-32 justify-center px-1 sm:px-2 py-2.5 rounded-b-2xl font-medium text-[11px] sm:text-xs transition-all duration-300 shadow-sm flex items-center gap-1 sm:gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
                         <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-amber-200/90 rounded-xs shadow-xs border border-amber-300/60 rotate-[-1deg]"></span>
-                        <i class="fa-solid fa-user-heart text-xs text-rose-500"></i>
+                        <i class="fa-solid fa-trophy hidden sm:inline-block text-xs text-rose-500"></i>
+                        <span class="whitespace-nowrap">Hall of Frame</span>
+                    </button>
+                    <!-- Tab 4: Profile -->
+                    <button id="navProfileBtn" onclick="switchMainTab('profile')" class="relative w-[4.5rem] min-[360px]:w-20 sm:w-32 justify-center px-1 sm:px-2 py-2.5 rounded-b-2xl font-medium text-[11px] sm:text-xs transition-all duration-300 shadow-sm flex items-center gap-1 sm:gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5">
+                        <span class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-7 h-2.5 bg-amber-200/90 rounded-xs shadow-xs border border-amber-300/60 rotate-[-1deg]"></span>
+                        <i class="fa-solid fa-user-heart hidden sm:inline-block text-xs text-rose-500"></i>
                         <span>Profile</span>
                     </button>
                 </nav>
@@ -441,6 +446,29 @@
                     </div>
                 </div>
             </div>
+
+            <section id="hallOfFrameSection" class="hidden mx-auto max-w-5xl space-y-6" aria-labelledby="hallOfFrameHeading">
+                <div class="text-center space-y-2">
+                    <h2 id="hallOfFrameHeading" class="font-serif-luxury text-4xl sm:text-5xl font-bold gold-gradient-text">Hall of Frame</h2>
+                    <p class="text-sm text-stone-600">ผู้ได้รับดอกกุหลาบมากที่สุดในแต่ละซีซัน</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                    <figure class="glass-card overflow-hidden rounded-3xl border border-pink-200 bg-white shadow-sm">
+                        <img src="assets/hall-of-frame/musk.png" alt="โปสเตอร์ Musk ผู้ชนะ Love Roulette Season 1" class="block aspect-square w-full object-contain bg-stone-100" loading="lazy">
+                        <figcaption class="flex items-center justify-between gap-3 px-5 py-4">
+                            <span class="text-lg font-bold text-stone-800">Musk</span>
+                            <span class="text-sm font-semibold text-rose-700">Season 1</span>
+                        </figcaption>
+                    </figure>
+                    <figure class="glass-card overflow-hidden rounded-3xl border border-pink-200 bg-white shadow-sm">
+                        <img src="assets/hall-of-frame/jet.jpg" alt="โปสเตอร์ Jet ผู้ชนะ Love Roulette Season 2" class="block aspect-square w-full object-contain bg-stone-100" loading="lazy">
+                        <figcaption class="flex items-center justify-between gap-3 px-5 py-4">
+                            <span class="text-lg font-bold text-stone-800">Jet</span>
+                            <span class="text-sm font-semibold text-rose-700">Season 2</span>
+                        </figcaption>
+                    </figure>
+                </div>
+            </section>
 
             <!-- 3. PROFILE SECTION (ALWAYS USER'S OWN PROFILE) -->
             <div id="profileSection" class="hidden space-y-6">
@@ -1371,11 +1399,11 @@
             if (name) {
                 label.innerText = name;
                 label.title = `โปรไฟล์: ${name}`;
-                icon.className = 'fa-solid fa-user text-xs text-rose-500';
+                icon.className = 'fa-solid fa-user hidden sm:inline-block text-xs text-rose-500';
             } else {
                 label.innerText = 'Community';
                 label.title = 'Community';
-                icon.className = 'fa-solid fa-users text-xs text-rose-500';
+                icon.className = 'fa-solid fa-users hidden sm:inline-block text-xs text-rose-500';
             }
         }
 
@@ -1383,17 +1411,21 @@
             const profileSec = document.getElementById('profileSection');
             const timelineSec = document.getElementById('timelineSection');
             const communitySec = document.getElementById('communitySection');
+            const hallOfFrameSec = document.getElementById('hallOfFrameSection');
+            const navHallOfFrameBtn = document.getElementById('navHallOfFrameBtn');
             const navProfileBtn = document.getElementById('navProfileBtn');
             const navTimelineBtn = document.getElementById('navTimelineBtn');
             const navCommunityBtn = document.getElementById('navCommunityBtn');
 
-            const activeTabClass = 'relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-semibold text-xs transition-all duration-300 shadow-md flex items-center gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1';
-            const inactiveTabClass = 'relative w-[5.75rem] min-[360px]:w-[6.875rem] sm:w-32 justify-center px-2 py-2.5 rounded-b-2xl font-medium text-xs transition-all duration-300 shadow-sm flex items-center gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5';
+            const activeTabClass = 'relative w-[4.5rem] min-[360px]:w-20 sm:w-32 justify-center px-1 sm:px-2 py-2.5 rounded-b-2xl font-semibold text-[11px] sm:text-xs transition-all duration-300 shadow-md flex items-center gap-1 sm:gap-2 border-x border-b border-rose-300 bg-rose-500 text-white translate-y-1';
+            const inactiveTabClass = 'relative w-[4.5rem] min-[360px]:w-20 sm:w-32 justify-center px-1 sm:px-2 py-2.5 rounded-b-2xl font-medium text-[11px] sm:text-xs transition-all duration-300 shadow-sm flex items-center gap-1 sm:gap-2 border-x border-b border-pink-200/80 bg-amber-50/90 hover:bg-amber-100 text-stone-700 hover:translate-y-0.5';
 
+            hallOfFrameSec.classList.add('hidden');
             if (profileSec) profileSec.classList.add('hidden');
             if (timelineSec) timelineSec.classList.add('hidden');
             if (communitySec) communitySec.classList.add('hidden');
 
+            navHallOfFrameBtn.className = inactiveTabClass;
             if (navProfileBtn) navProfileBtn.className = inactiveTabClass;
             if (navTimelineBtn) navTimelineBtn.className = inactiveTabClass;
             if (navCommunityBtn) navCommunityBtn.className = inactiveTabClass;
@@ -1425,6 +1457,9 @@
                     updateCommunityNavTab(viewedCommunityUser.name);
                     renderCommunityMemberDetail(viewedCommunityUser);
                 }
+            } else if (tabName === 'hallOfFrame') {
+                hallOfFrameSec.classList.remove('hidden');
+                navHallOfFrameBtn.className = activeTabClass;
             } else if (tabName === 'profile') {
                 if (profileSec) profileSec.classList.remove('hidden');
                 if (navProfileBtn) navProfileBtn.className = activeTabClass;
