@@ -21,12 +21,13 @@ function subscribeTimeline(onChange, onError) {
   const fail = (err) => onError && onError(err);
   let limit = TIMELINE_PAGE;
   let posts = null;
+  let postsPending = false;
   let hasMore = false;
   let postsUnsub = null;
   const perPost = new Map(); // postId → { likes, comments, likesReady, commentsReady, unsubs }
 
   const emit = () => {
-    if (!posts) return;
+    if (!posts || postsPending) return;
     onChange(posts.filter((p) => !p.deleted).map((p) => {
       const extra = perPost.get(p.id);
       return {
@@ -63,7 +64,9 @@ function subscribeTimeline(onChange, onError) {
 
   const listenPosts = () => {
     if (postsUnsub) postsUnsub();
+    postsPending = true;
     postsUnsub = db.collection('posts').orderBy('createdAt', 'desc').limit(limit).onSnapshot((snap) => {
+      postsPending = false;
       posts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       hasMore = snap.size >= limit;
       // โพสต์ที่หลุดจากรายการ (ถูกลบ / เก่าเกิน) → เลิกฟังถูกใจ/ความคิดเห็น
@@ -89,6 +92,16 @@ function subscribeTimeline(onChange, onError) {
       ids.filter((id) => listed.has(id)).forEach(watchPost);
     },
   };
+}
+
+// ฟังโพสต์ของเจ้าของโปรไฟล์ รวมโพสต์ที่เก่ากว่าหน้าแรกของไทม์ไลน์
+function subscribeProfilePosts(userId, onChange, onError) {
+  return authDb().collection('posts').where('authorId', '==', userId).onSnapshot((snap) => {
+    const posts = snap.docs.map(d => ({ ...d.data(), id: d.id }))
+      .filter(post => !post.deleted)
+      .sort((a, b) => b.createdAt - a.createdAt || b.id.localeCompare(a.id));
+    onChange(posts);
+  }, onError);
 }
 
 // ใบอนุญาต + การเขียน ในชุดเดียว (สำเร็จทั้งหมดหรือไม่เกิดเลย)

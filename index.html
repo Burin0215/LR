@@ -13,7 +13,7 @@
     <script src="auth.js?v=20260928a"></script>
     <script src="profile.js?v=20260928a"></script>
     <script src="inventory.js?v=20260928a"></script>
-    <script src="timeline.js?v=20260928a"></script>
+    <script src="timeline.js?v=20261124a"></script>
     <script src="notify.js?v=20260928a"></script>
     
     <!-- Google Fonts: Cormorant Garamond & Prompt -->
@@ -419,6 +419,13 @@
                         <div id="commRequestBtnContainer" class="pt-1"></div>
                     </div>
 
+                    <section class="max-w-3xl mx-auto space-y-3" aria-labelledby="communityProfilePostsHeading">
+                        <h4 id="communityProfilePostsHeading" class="text-base font-bold text-stone-800 flex items-center gap-2">
+                            <i class="fa-solid fa-rss text-rose-500" aria-hidden="true"></i> โพสต์จากไทม์ไลน์
+                        </h4>
+                        <div id="communityProfilePosts" class="space-y-3"></div>
+                    </section>
+
                     <!-- Member Portfolio Section (Managed by Admin) -->
                     <div class="glass-card bg-white/95 rounded-3xl p-6 sm:p-8 border border-pink-300/80 shadow-lg space-y-4 max-w-5xl mx-auto">
                         <div class="flex items-center justify-between pb-3 border-b border-pink-100">
@@ -459,6 +466,13 @@
                         </div>
                     </div>
                 </aside>
+
+                <section class="max-w-3xl mx-auto space-y-3" aria-labelledby="ownProfilePostsHeading">
+                    <h4 id="ownProfilePostsHeading" class="text-base font-bold text-stone-800 flex items-center gap-2">
+                        <i class="fa-solid fa-rss text-rose-500" aria-hidden="true"></i> โพสต์ของฉัน
+                    </h4>
+                    <div id="ownProfilePosts" class="space-y-3"></div>
+                </section>
 
                 <!-- Personal Portfolio Showcase (Managed by Admin) -->
                 <div class="glass-card bg-white/95 rounded-3xl p-6 sm:p-8 border border-pink-300/80 shadow-lg space-y-4 max-w-5xl mx-auto">
@@ -1354,6 +1368,7 @@
             renderMentions();
             document.getElementById('mentionPanel').classList.add('hidden');
             currentUser = null;
+            showProfilePosts(null);
             viewedCommunityUser = null;
             updateCommunityNavTab(null);
             document.getElementById('profileView').classList.add('hidden');
@@ -1395,6 +1410,14 @@
             if (navProfileBtn) navProfileBtn.className = inactiveTabClass;
             if (navTimelineBtn) navTimelineBtn.className = inactiveTabClass;
             if (navCommunityBtn) navCommunityBtn.className = inactiveTabClass;
+
+            if (tabName === 'profile' && currentUser) {
+                showProfilePosts(currentUser.id, 'ownProfilePosts');
+            } else if (tabName === 'community' && viewedCommunityUser) {
+                showProfilePosts(viewedCommunityUser.id, 'communityProfilePosts');
+            } else {
+                showProfilePosts(null);
+            }
 
             if (tabName === 'timeline') {
                 if (timelineSec) timelineSec.classList.remove('hidden');
@@ -1490,12 +1513,14 @@
         let timelineSync = null;
         let timelineRetry = null;
         let timelineHasMore = false;
+        let timelineLoadingMore = false;
         function startTimelineSync() {
             if (timelineSync) timelineSync.stop();
             try {
                 timelineSync = subscribeTimeline((posts, info) => {
                     TIMELINE_POSTS = posts;
                     timelineHasMore = info.hasMore;
+                    timelineLoadingMore = false;
                     timelineLoaded = true;
                     if (currentUser) renderTimeline();
                 }, err => {
@@ -2117,7 +2142,7 @@
         }
 
         function scrollToPendingPost() {
-            if (!pendingScrollPostId || !timelineLoaded) return;
+            if (!pendingScrollPostId || !timelineLoaded || timelineLoadingMore) return;
             const el = document.getElementById(`post-${pendingScrollPostId}`);
             if (el) {
                 pendingScrollPostId = null;
@@ -2132,10 +2157,10 @@
             }
         }
 
-        // โหลดโพสต์เก่าเพิ่มทีละ 20 โพสต์
+        // โหลดโพสต์เก่าเพิ่มทีละหน้า
         function loadMorePosts() {
-            if (!timelineSync || !timelineHasMore) return;
-            timelineHasMore = false;
+            if (!timelineSync || !timelineHasMore || timelineLoadingMore) return;
+            timelineLoadingMore = true;
             renderTimeline();
             timelineSync.showMore();
         }
@@ -2208,7 +2233,7 @@
                 return;
             }
 
-            if (TIMELINE_POSTS.length === 0) {
+            if (TIMELINE_POSTS.length === 0 && !timelineHasMore) {
                 feedContainer.innerHTML = `
                     <div class="glass-card bg-white/95 rounded-3xl p-10 text-center border border-pink-200 space-y-2">
                         <div class="text-4xl">🌸</div>
@@ -2216,6 +2241,7 @@
                         <p class="text-xs text-stone-500 font-light">มาเป็นคนแรกที่แชร์เรื่องราวความรู้สึกให้ทุกคนในคอมมูได้รับรู้กันเถอะ</p>
                     </div>
                 `;
+                scrollToPendingPost();
                 return;
             }
 
@@ -2359,7 +2385,7 @@
             });
             patchFeed(feedContainer, TIMELINE_POSTS.map((p, i) => ({ id: p.id, html: cards[i] })));
             observePostCards(feedContainer);
-            if (timelineHasMore) feedContainer.insertAdjacentHTML('beforeend', `
+            if (timelineHasMore && !timelineLoadingMore) feedContainer.insertAdjacentHTML('beforeend', `
                 <div class="text-center pt-1">
                     <button onclick="loadMorePosts()" class="px-5 py-2.5 rounded-full bg-white border border-pink-300 hover:bg-pink-50 text-pink-700 text-xs font-semibold shadow-sm transition-all cursor-pointer">
                         <i class="fa-solid fa-chevron-down text-[12px] mr-1"></i> ดูโพสต์เก่าเพิ่มเติม
@@ -2566,6 +2592,7 @@
         }
 
         function returnToCommunityDirectory() {
+            showProfilePosts(null);
             viewedCommunityUser = null;
             updateCommunityNavTab(null);
             const dirView = document.getElementById('communityDirectoryView');
@@ -2705,6 +2732,78 @@
             if (count < 2) return;
             cardPhotoIndex[containerId] = ((cardPhotoIndex[containerId] || 0) + delta + count) % count;
             renderProfileCard(user, containerId);
+        }
+
+        let profilePostsView = null;
+
+        function showProfilePosts(userId, containerId) {
+            if (profilePostsView && profilePostsView.userId === userId && profilePostsView.container.id === containerId) return;
+            if (profilePostsView) {
+                profilePostsView.unsubscribe();
+                profilePostsView.container.replaceChildren();
+            }
+            profilePostsView = null;
+            if (!userId) return;
+
+            const container = document.getElementById(containerId);
+            const view = { userId, container, posts: [], limit: TIMELINE_PAGE, unsubscribe: () => {} };
+            profilePostsView = view;
+            container.innerHTML = '<p class="text-sm text-stone-500" role="status">กำลังโหลดโพสต์…</p>';
+            view.unsubscribe = subscribeProfilePosts(userId, posts => {
+                if (profilePostsView !== view) return;
+                view.posts = posts;
+                renderProfilePosts(view);
+            }, error => {
+                if (profilePostsView !== view) return;
+                console.warn(error);
+                container.innerHTML = '<p class="text-sm text-stone-600" role="status">โหลดโพสต์ไม่สำเร็จ <button type="button" class="text-rose-700 underline">ลองใหม่</button></p>';
+                container.querySelector('button').onclick = () => {
+                    showProfilePosts(null);
+                    showProfilePosts(userId, containerId);
+                };
+            });
+        }
+
+        function renderProfilePosts(view) {
+            if (!view.posts.length) {
+                view.container.innerHTML = '<p class="text-sm text-stone-500">ยังไม่มีโพสต์ในไทม์ไลน์</p>';
+                return;
+            }
+
+            view.container.innerHTML = view.posts.slice(0, view.limit).map(post => {
+                const images = [post.image, post.image2].map(cleanImage).filter(Boolean);
+                return `
+                    <article class="glass-card bg-white/95 rounded-2xl border border-pink-200 p-4 sm:p-5 space-y-3 shadow-sm">
+                        <div class="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                            <span title="${escapeHtml(new Date(post.createdAt).toLocaleString('th-TH'))}">${timeAgo(post.createdAt)}</span>
+                            ${post.feeling ? `<span class="rounded-full bg-pink-50 px-2 py-0.5 text-pink-700">${escapeHtml(post.feeling)}</span>` : ''}
+                            ${post.edited ? '<span>(แก้ไขแล้ว)</span>' : ''}
+                        </div>
+                        ${post.content ? `<p class="text-sm text-stone-700 whitespace-pre-line break-words">${renderRichText(post.content)}</p>` : ''}
+                        ${images.length ? `<div class="grid ${images.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
+                            ${images.map((src, index) => `<img src="${escapeHtml(src)}" alt="รูปที่ ${index + 1} ในโพสต์" loading="lazy" class="mx-auto max-h-80 max-w-full rounded-xl object-contain">`).join('')}
+                        </div>` : ''}
+                        <button type="button" data-timeline-post="${escapeHtml(post.id)}" class="text-xs font-semibold text-rose-700 hover:underline">ดูในไทม์ไลน์</button>
+                    </article>`;
+            }).join('');
+            view.container.querySelectorAll('[data-timeline-post]').forEach(button => {
+                button.onclick = () => {
+                    pendingScrollPostId = button.dataset.timelinePost;
+                    switchMainTab('timeline');
+                };
+            });
+
+            if (view.posts.length > view.limit) {
+                const more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'rounded-full border border-pink-300 bg-white px-4 py-2 text-xs font-semibold text-pink-700 hover:bg-pink-50';
+                more.textContent = 'ดูโพสต์เก่าเพิ่มเติม';
+                more.onclick = () => {
+                    view.limit += TIMELINE_PAGE;
+                    renderProfilePosts(view);
+                };
+                view.container.append(more);
+            }
         }
 
         function renderOwnProfile() {
