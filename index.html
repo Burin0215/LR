@@ -2378,11 +2378,12 @@
             scrollToPendingPost();
         }
 
-        // ================= Rose Spotlight (Community) — ประกาศผลเมื่อปิดรับดอกกุหลาบ =================
+        // ================= Rose Spotlight (Community) — ประกาศผลเวลา 21:00 น. =================
         // ผลประจำสัปดาห์ = ดอกกุหลาบที่ได้รับจาก Member (มอบ + ถูกขอ Request 1:1) ตั้งแต่เริ่มสัปดาห์จนถึงเวลาปิดรับ
         // ไม่นับที่ Admin ปรับยอด / ยอดเท่ากันเรียงตามชื่อ / ไม่แสดงจำนวนดอก
-        // ก่อนถึงเวลาปิดรับ แสดงวันและเวลาประกาศผล
+        // ก่อนถึงเวลาประกาศผล แสดงวันและเวลาประกาศผล
         const GIFT_CLOSE_AT = Date.parse('2026-11-24T20:30:00+07:00');
+        const SPOTLIGHT_ANNOUNCE_AT = Date.parse('2026-11-24T21:00:00+07:00');
         let spotlightResult = null;   // { weekStart, top: [{ user, rank }] }
         let spotlightLoading = false;
         let spotlightTimer = null;
@@ -2413,7 +2414,7 @@
         // ผลของสัปดาห์ที่จบแล้วไม่เปลี่ยนอีก → เก็บไว้ในเครื่อง ไม่ต้องโหลดซ้ำ (ประหยัดโควตา)
         async function loadSpotlightResult() {
             const now = Date.now();
-            if (now < GIFT_CLOSE_AT || spotlightLoading) return;
+            if (now < SPOTLIGHT_ANNOUNCE_AT || spotlightLoading) return;
             const end = GIFT_CLOSE_AT;
             const start = wednesdayStart(end);
             if (spotlightResult && spotlightResult.weekStart === start) return;
@@ -2448,7 +2449,7 @@
         function tickSpotlight() {
             const box = document.getElementById('roseSpotlight');
             if (!box || box.classList.contains('hidden')) return;
-            if (Date.now() >= GIFT_CLOSE_AT && !spotlightResult && !spotlightLoading) {
+            if (Date.now() >= SPOTLIGHT_ANNOUNCE_AT && !spotlightResult && !spotlightLoading) {
                 const wasTeaser = !spotlightResult;
                 loadSpotlightResult().then(() => { if (wasTeaser && spotlightResult && spotlightResult.top.length) triggerCelebration(); });
             }
@@ -2472,10 +2473,10 @@
 
         // โหมดลุ้นผล: เงาปริศนา 3 อันดับ + นับถอยหลังถึงวันประกาศ
         function spotlightTeaser() {
-            const date = thaiDate(GIFT_CLOSE_AT, { day: 'numeric', month: 'short' });
-            const message = isGiftClosed()
+            const date = thaiDate(SPOTLIGHT_ANNOUNCE_AT, { day: 'numeric', month: 'short' });
+            const message = Date.now() >= SPOTLIGHT_ANNOUNCE_AT
                 ? (spotlightResult ? 'รอบนี้ไม่มีผู้ได้รับดอกกุหลาบจากสมาชิก' : 'กำลังโหลดผล')
-                : `ประกาศผล ${date} เวลา 20:30 น. (เวลาไทย)`;
+                : `ประกาศผล ${date} เวลา 21:00 น. (เวลาไทย)`;
             return spotlightShell(`
                 <div class="text-center space-y-2">
                     <h3 class="font-serif-luxury text-4xl font-bold gold-gradient-text">ขวัญใจดอกกุหลาบ</h3>
@@ -2493,7 +2494,7 @@
 
             const top = spotlightResult ? spotlightResult.top
                 .map(t => ({ user: findUserById(t.userId), rank: t.rank })).filter(t => t.user) : [];
-            if (now < GIFT_CLOSE_AT || !top.length) {
+            if (now < SPOTLIGHT_ANNOUNCE_AT || !top.length) {
                 // แสดงสถานะระหว่างรอ หรือเมื่อไม่มีผู้ชนะ
                 box.innerHTML = spotlightTeaser();
                 box.classList.remove('hidden');
